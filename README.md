@@ -46,18 +46,38 @@ Este proyecto reemplaza ese flujo por un **panel interno** donde el equipo de CN
 
 ## 4. Stack tecnológico
 
-| Capa | Tecnología | Motivo |
+El proyecto se divide en dos aplicaciones independientes que se comunican por API REST: un **backend en Go** (monolito modular) y un **frontend en Next.js**. Esta separación permite que cada capa escale y se despliegue por su cuenta a medida que el sistema crece.
+
+### Backend
+
+| Necesidad | Tecnología | Motivo |
 |---|---|---|
-| Frontend + Backend | **Next.js 14 (App Router) + TypeScript** | Un solo proyecto, SSR, API routes, fácil despliegue |
+| Lenguaje / arquitectura | **Go, monolito modular** | Concurrencia nativa para envíos masivos, binario único, bajo consumo, fácil de dividir en servicios a futuro |
+| Router HTTP | **chi** | Liviano, idiomático, middleware simple |
+| Acceso a datos | **sqlc** | SQL tipado, sin overhead de un ORM completo |
+| Migraciones | **golang-migrate** | Control de versiones del esquema de base de datos |
+| Envío de correo | **resend-go** (SDK oficial) | Integración directa con la API de Resend, incluye adjuntos |
+| Cola / background jobs | **asynq (Redis)** | Worker pool para envío masivo con rate-limiting, reintentos automáticos |
+| Autenticación | **JWT propio** | Panel interno, sin necesidad de proveedor externo |
+| Validación | **go-playground/validator** | Validación de payloads de la API |
+
+### Frontend
+
+| Necesidad | Tecnología | Motivo |
+|---|---|---|
+| Framework | **Next.js 14 (App Router) + TypeScript** | SSR, buena DX, consumo de API REST del backend |
 | UI | **Tailwind CSS + shadcn/ui** | Componentes accesibles y consistentes, desarrollo rápido |
+| Cliente HTTP | **fetch + React Query (TanStack Query)** | Manejo de estado de servidor, caché y reintentos hacia la API de Go |
+| Validación de formularios | **Zod + react-hook-form** | Validación en cliente antes de llegar a la API |
+
+### Infraestructura compartida
+
+| Necesidad | Tecnología | Motivo |
+|---|---|---|
 | Base de datos | **PostgreSQL (Supabase)** | Relacional, robusto, con panel de administración incluido |
-| ORM | **Prisma** | Tipado seguro end-to-end con TypeScript |
-| Envío de correo | **Resend + React Email** | API simple, soporte de adjuntos, webhooks de estado |
-| Cola de envío | **Upstash QStash** (o cola propia con rate-limit) | Evita saturar el límite de envíos de Resend |
-| Autenticación | **NextAuth (Auth.js)** | Acceso restringido solo al equipo de CNI |
 | Almacenamiento de adjuntos | **Supabase Storage** | Guardar PDFs/Word subidos antes de enviarlos |
-| Validación | **Zod** | Validación de formularios y payloads de API |
-| Hosting | **Vercel** (app) + **Supabase** (DB/Storage) | Despliegue continuo, escalabilidad, bajo mantenimiento |
+| Hosting backend | **VPS / Fly.io / Railway** (binario Go) | Bajo costo, control total, ideal para procesos con workers en background |
+| Hosting frontend | **Vercel** | Despliegue continuo para Next.js |
 
 ---
 
@@ -192,27 +212,32 @@ classDiagram
 ```mermaid
 sequenceDiagram
     actor U as Usuario CNI
-    participant P as Panel Web (Next.js)
+    participant F as Frontend (Next.js)
+    participant A as Backend API (Go)
     participant DB as Base de Datos
-    participant Q as Cola de Envío
+    participant W as Worker Pool (asynq)
     participant R as Resend API
     participant E as Empresa Destinataria
 
-    U->>P: Selecciona lista y compone correspondencia
-    P->>DB: Guarda borrador de correspondencia
-    U->>P: Confirma envío masivo
-    P->>DB: Obtiene contactos de la lista
-    P->>Q: Encola un envío por contacto
+    U->>F: Selecciona lista y compone correspondencia
+    F->>A: POST /correspondencia
+    A->>DB: Guarda borrador de correspondencia
+    U->>F: Confirma envío masivo
+    F->>A: POST /correspondencia/:id/enviar
+    A->>DB: Obtiene contactos de la lista
+    A->>W: Encola un envío por contacto
     loop Por cada contacto en la cola
-        Q->>R: Envía correo personalizado con adjunto
+        W->>R: Envía correo personalizado con adjunto
         R->>E: Entrega el correo
-        R-->>Q: Confirma aceptación del envío
+        R-->>W: Confirma aceptación del envío
     end
-    R-->>P: Webhook: entregado / rebotado / abierto
-    P->>DB: Registra evento de envío
-    U->>P: Consulta dashboard de resultados
-    P->>DB: Obtiene estado de todos los envíos
-    P-->>U: Muestra entregados, rebotados y abiertos
+    R-->>A: Webhook: entregado / rebotado / abierto
+    A->>DB: Registra evento de envío
+    U->>F: Consulta dashboard de resultados
+    F->>A: GET /envios?correspondencia_id=
+    A->>DB: Obtiene estado de todos los envíos
+    A-->>F: Devuelve resultados
+    F-->>U: Muestra entregados, rebotados y abiertos
 ```
 
 ---
@@ -306,8 +331,15 @@ Usuario CNI"]
     end
 
     subgraph VERCEL["Vercel"]
-        NextApp["Next.js App
-Frontend + API Routes"]
+        NextApp["Frontend Next.js
+Panel web"]
+    end
+
+    subgraph BACKENDHOST["VPS / Fly.io / Railway"]
+        GoAPI["Backend Go
+Monolito modular"]
+        GoWorker["Worker Pool
+asynq"]
     end
 
     subgraph SUPABASE["Supabase"]
@@ -317,13 +349,13 @@ Base de datos")]
 Adjuntos PDF/Word"]
     end
 
-    subgraph UPSTASH["Upstash"]
-        Queue["QStash
-Cola de envío"]
+    subgraph REDIS["Redis"]
+        RedisQ[("Cola de jobs
+para asynq")]
     end
 
     subgraph RESEND["Resend"]
-        API["Resend API"]
+        RAPI["Resend API"]
         Webhook["Webhooks
 de estado"]
     end
@@ -333,15 +365,17 @@ de estado"]
     end
 
     Browser -->|HTTPS| NextApp
-    NextApp -->|Prisma| PG
-    NextApp -->|Sube archivo| Storage
-    NextApp -->|Encola envíos| Queue
-    Queue -->|Dispara envío| API
-    API -->|Usa registros de| DNS
-    API -->|Entrega correo| Empresas["Empresas
+    NextApp -->|REST / JSON| GoAPI
+    GoAPI -->|sqlc| PG
+    GoAPI -->|Sube archivo| Storage
+    GoAPI -->|Encola envíos| RedisQ
+    GoWorker -->|Consume jobs| RedisQ
+    GoWorker -->|Envía correo| RAPI
+    RAPI -->|Usa registros de| DNS
+    RAPI -->|Entrega correo| Empresas["Empresas
 destinatarias"]
-    API -->|Eventos| Webhook
-    Webhook -->|Actualiza estado| NextApp
+    RAPI -->|Eventos| Webhook
+    Webhook -->|Actualiza estado| GoAPI
 
     classDef cliente fill:#eef2ff,stroke:#4f46e5,stroke-width:2px,color:#1e1b4b
     classDef app fill:#ecfdf5,stroke:#059669,stroke-width:2px,color:#064e3b
@@ -349,17 +383,55 @@ destinatarias"]
     classDef envio fill:#fdf2f8,stroke:#db2777,stroke-width:2px,color:#831843
 
     class Browser cliente
-    class NextApp app
-    class PG,Storage,Queue datos
-    class API,Webhook,DNS envio
+    class NextApp,GoAPI,GoWorker app
+    class PG,Storage,RedisQ datos
+    class RAPI,Webhook,DNS envio
 ```
 
 ---
 
 ## 10. Estructura de carpetas propuesta
 
+El proyecto se organiza como dos repositorios (o un monorepo con dos carpetas raíz):
+
+### Backend (Go, monolito modular)
+
 ```
-panel-correspondencia-cni/
+cni-backend/
+├── cmd/
+│   └── api/
+│       └── main.go
+├── internal/
+│   ├── contactos/
+│   │   ├── handler.go
+│   │   ├── service.go
+│   │   ├── repository.go
+│   │   └── model.go
+│   ├── correspondencia/
+│   │   ├── handler.go
+│   │   ├── service.go
+│   │   ├── repository.go
+│   │   └── model.go
+│   ├── envios/
+│   │   ├── handler.go
+│   │   ├── service.go
+│   │   ├── worker.go        → jobs de asynq
+│   │   └── model.go
+│   ├── webhooks/
+│   │   └── resend_handler.go
+│   └── shared/
+│       ├── auth/
+│       ├── config/
+│       ├── db/
+│       └── middleware/
+├── migrations/
+└── go.mod
+```
+
+### Frontend (Next.js)
+
+```
+cni-frontend/
 ├── app/
 │   ├── (auth)/
 │   │   └── login/
@@ -367,36 +439,37 @@ panel-correspondencia-cni/
 │   ├── correspondencia/
 │   │   ├── nueva/
 │   │   └── [id]/
-│   ├── envios/
-│   └── api/
-│       ├── contactos/
-│       ├── correspondencia/
-│       ├── envios/
-│       └── webhooks/resend/
+│   └── envios/
 ├── components/
 ├── lib/
-│   ├── resend.ts
-│   ├── prisma.ts
-│   └── queue.ts
-├── prisma/
-│   └── schema.prisma
-└── emails/
-    └── plantilla-correspondencia.tsx
+│   ├── api-client.ts        → cliente REST hacia el backend Go
+│   └── validators.ts
+└── package.json
 ```
 
 ---
 
 ## 11. Variables de entorno
 
+### Backend (Go)
+
 ```
 DATABASE_URL=
+REDIS_URL=
 RESEND_API_KEY=
 RESEND_WEBHOOK_SECRET=
-NEXTAUTH_SECRET=
-NEXTAUTH_URL=
+JWT_SECRET=
 SUPABASE_URL=
 SUPABASE_SERVICE_ROLE_KEY=
-QSTASH_TOKEN=
+PORT=
+```
+
+### Frontend (Next.js)
+
+```
+NEXT_PUBLIC_API_URL=
+NEXTAUTH_SECRET=
+NEXTAUTH_URL=
 ```
 
 ---
