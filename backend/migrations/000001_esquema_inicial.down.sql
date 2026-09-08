@@ -1,0 +1,8 @@
+DROP TABLE IF EXISTS evento_envio;
+DROP TABLE IF EXISTS envio;
+DROP TABLE IF EXISTS adjunto;
+DROP TABLE IF EXISTS correspondencia;
+DROP TABLE IF EXISTS contacto_lista;
+DROP TABLE IF EXISTS lista_contactos;
+DROP TABLE IF EXISTS contacto;
+DROP TABLE IF EXISTS usuario;
