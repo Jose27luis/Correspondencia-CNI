@@ -26,7 +26,7 @@ type Usuario struct {
 type EntradaRegistro struct {
 	Nombre     string `json:"nombre" validate:"required,min=2,max=200"`
 	Correo     string `json:"correo" validate:"required,email,max=320"`
-	Contrasena string `json:"contrasena" validate:"required,min=10,max=128"`
+	Contrasena string `json:"contrasena" validate:"required,min=8,max=128"`
 }
 
 type EntradaAcceso struct {
