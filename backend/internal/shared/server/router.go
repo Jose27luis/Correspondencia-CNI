@@ -29,11 +29,20 @@ type EstadoSalud struct {
 	BaseDeDatos string `json:"base_de_datos"`
 }
 
-func NuevoRouter(pool *pgxpool.Pool, cfg config.Config, cliente *asynq.Client) (http.Handler, error) {
+func NuevoRouter(ctx context.Context, pool *pgxpool.Pool, cfg config.Config, cliente *asynq.Client) (http.Handler, error) {
 	emisor := auth.NuevoEmisor(cfg.JWTSecret, auth.VigenciaDefecto)
 
 	servicioUsuarios, err := users.NuevoServicio(users.NuevoRepositorio(pool), emisor)
 	if err != nil {
+		return nil, err
+	}
+
+	if err := servicioUsuarios.AsegurarUsuarioInicial(
+		ctx,
+		cfg.UsuarioInicialNombre,
+		cfg.UsuarioInicialCorreo,
+		cfg.UsuarioInicialClave,
+	); err != nil {
 		return nil, err
 	}
 
