@@ -17,6 +17,7 @@ import (
 	"github.com/Jose27luis/Correspondencia-CNI/backend/internal/shared/config"
 	"github.com/Jose27luis/Correspondencia-CNI/backend/internal/shared/db"
 	"github.com/Jose27luis/Correspondencia-CNI/backend/internal/shared/mailer"
+	"github.com/Jose27luis/Correspondencia-CNI/backend/internal/shared/storage"
 )
 
 const (
@@ -70,10 +71,16 @@ func ejecutar() error {
 		Logger:      registrador{},
 	})
 
+	almacen, err := storage.NuevoAlmacen(cfg.RutaAlmacen, cfg.UrlPublicaArchivos)
+	if err != nil {
+		return err
+	}
+
 	worker := dispatches.NuevoWorker(
 		dispatches.NuevoRepositorio(pool),
 		correspondence.NuevoRepositorio(pool),
 		proveedor,
+		almacen,
 		envioPorSegundo,
 	)
 
