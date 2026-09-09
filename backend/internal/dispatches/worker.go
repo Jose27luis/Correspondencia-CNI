@@ -16,6 +16,7 @@ import (
 	"github.com/Jose27luis/Correspondencia-CNI/backend/internal/correspondence"
 	"github.com/Jose27luis/Correspondencia-CNI/backend/internal/shared/mailer"
 	"github.com/Jose27luis/Correspondencia-CNI/backend/internal/shared/storage"
+	"github.com/Jose27luis/Correspondencia-CNI/backend/internal/suppression"
 )
 
 type Worker struct {
@@ -23,6 +24,7 @@ type Worker struct {
 	correspondencia *correspondence.Repositorio
 	proveedor       mailer.Proveedor
 	almacen         *storage.Almacen
+	exclusiones     *suppression.Servicio
 	limitador       *rate.Limiter
 }
 
@@ -31,6 +33,7 @@ func NuevoWorker(
 	correspondencia *correspondence.Repositorio,
 	proveedor mailer.Proveedor,
 	almacen *storage.Almacen,
+	exclusiones *suppression.Servicio,
 	porSegundo int,
 ) *Worker {
 	if porSegundo <= 0 {
@@ -42,6 +45,7 @@ func NuevoWorker(
 		correspondencia: correspondencia,
 		proveedor:       proveedor,
 		almacen:         almacen,
+		exclusiones:     exclusiones,
 		limitador:       rate.NewLimiter(rate.Limit(porSegundo), porSegundo),
 	}
 }
@@ -78,6 +82,14 @@ func (w *Worker) procesarEnvio(ctx context.Context, tarea *asynq.Task) error {
 	asunto := correspondence.Renderizar(pieza.Asunto, contacto)
 	cuerpo := correspondence.Renderizar(pieza.Cuerpo, contacto)
 
+	textoFinal := cuerpo.Texto
+	if w.exclusiones != nil {
+		textoFinal += fmt.Sprintf(
+			"\n\n---\nSi no desea recibir más comunicaciones comerciales de CNI, puede darse de baja aquí:\n%s",
+			w.exclusiones.EnlaceDeBaja(contacto.ID),
+		)
+	}
+
 	adjuntos := make([]mailer.Adjunto, 0, len(pieza.Adjuntos)+1)
 	for _, adjunto := range pieza.Adjuntos {
 		adjuntos = append(adjuntos, mailer.Adjunto{
@@ -106,7 +118,7 @@ func (w *Worker) procesarEnvio(ctx context.Context, tarea *asynq.Task) error {
 	resultado, err := w.proveedor.Enviar(ctx, mailer.Mensaje{
 		Para:     contacto.Correo,
 		Asunto:   asunto.Texto,
-		Cuerpo:   cuerpo.Texto,
+		Cuerpo:   textoFinal,
 		Adjuntos: adjuntos,
 	})
 	if err != nil {
