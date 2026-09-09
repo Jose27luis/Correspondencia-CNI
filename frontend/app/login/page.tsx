@@ -96,18 +96,18 @@ export default function PaginaLogin() {
 
   return (
     <main className="grid min-h-screen lg:grid-cols-[1.05fr_1fr]">
-      <section className="relative hidden overflow-hidden bg-gradient-to-br from-[#0b1220] via-[#0f1c2e] to-[#04140f] px-12 py-14 text-zinc-100 lg:flex lg:flex-col lg:justify-between">
+      <section className="relative hidden overflow-hidden bg-zinc-950 px-12 py-14 text-zinc-300 lg:flex lg:flex-col lg:justify-between">
         <div
           aria-hidden="true"
-          className="pointer-events-none absolute inset-0 opacity-[0.35] [background-image:radial-gradient(circle_at_1px_1px,rgba(255,255,255,0.14)_1px,transparent_0)] [background-size:22px_22px]"
+          className="pointer-events-none absolute inset-0 opacity-[0.25] [background-image:radial-gradient(circle_at_1px_1px,rgba(255,255,255,0.12)_1px,transparent_0)] [background-size:22px_22px]"
         />
         <div
           aria-hidden="true"
-          className="pointer-events-none absolute inset-y-0 right-0 w-px bg-gradient-to-b from-transparent via-white/15 to-transparent"
+          className="pointer-events-none absolute inset-y-0 right-0 w-px bg-gradient-to-b from-transparent via-white/10 to-transparent"
         />
         <motion.div
           aria-hidden="true"
-          className="pointer-events-none absolute -right-24 -top-24 h-[26rem] w-[26rem] rounded-full bg-emerald-500/15 blur-3xl"
+          className="pointer-events-none absolute -right-24 -top-24 h-[26rem] w-[26rem] rounded-full bg-emerald-500/10 blur-3xl"
           animate={
             animacionReducida
               ? undefined
@@ -117,7 +117,7 @@ export default function PaginaLogin() {
         />
         <motion.div
           aria-hidden="true"
-          className="pointer-events-none absolute -bottom-32 -left-20 h-[22rem] w-[22rem] rounded-full bg-sky-500/10 blur-3xl"
+          className="pointer-events-none absolute -bottom-32 -left-20 h-[22rem] w-[22rem] rounded-full bg-emerald-500/[0.06] blur-3xl"
           animate={
             animacionReducida
               ? undefined
@@ -139,20 +139,20 @@ export default function PaginaLogin() {
         >
           <motion.span
             variants={elemento}
-            className="inline-flex items-center rounded-full border border-white/15 bg-white/5 px-3 py-1 text-xs font-medium tracking-wide text-zinc-200"
+            className="inline-flex items-center rounded-lg bg-white/10 px-3 py-1.5 text-xs font-medium tracking-wide text-white"
           >
             Panel interno
           </motion.span>
           <motion.h1
             variants={elemento}
-            className="mt-8 text-3xl font-semibold leading-tight"
+            className="mt-8 text-3xl font-semibold leading-tight text-white"
           >
             Correspondencia
             <span className="block text-emerald-400">CNI</span>
           </motion.h1>
           <motion.p
             variants={elemento}
-            className="mt-4 max-w-md text-sm leading-relaxed text-zinc-300"
+            className="mt-4 max-w-md text-sm leading-relaxed text-zinc-400"
           >
             Componga una carta comercial una sola vez, personalícela con los
             datos de cada empresa y envíela a toda una lista con seguimiento de
@@ -167,11 +167,15 @@ export default function PaginaLogin() {
           animate="visible"
         >
           {ventajas.map((ventaja) => (
-            <motion.div key={ventaja.titulo} variants={elemento}>
-              <dt className="text-xs uppercase tracking-wide text-zinc-400">
+            <motion.div
+              key={ventaja.titulo}
+              variants={elemento}
+              className="rounded-lg bg-white/5 px-3 py-2.5"
+            >
+              <dt className="text-[0.7rem] font-medium uppercase tracking-wider text-zinc-500">
                 {ventaja.titulo}
               </dt>
-              <dd className="mt-1 text-sm text-zinc-200">{ventaja.detalle}</dd>
+              <dd className="mt-1 text-sm text-zinc-300">{ventaja.detalle}</dd>
             </motion.div>
           ))}
         </motion.dl>
