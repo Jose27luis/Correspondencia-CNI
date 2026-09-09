@@ -7,8 +7,10 @@ import (
 	"strings"
 )
 
-func (s *Servicio) AsegurarUsuarioInicial(ctx context.Context, nombre string, correo string, contrasena string) error {
-	if strings.TrimSpace(correo) == "" || strings.TrimSpace(contrasena) == "" {
+func (s *Servicio) AsegurarUsuarioInicial(ctx context.Context, correo string, contrasena string) error {
+	correo = strings.TrimSpace(correo)
+
+	if correo == "" || strings.TrimSpace(contrasena) == "" {
 		return nil
 	}
 
@@ -22,7 +24,7 @@ func (s *Servicio) AsegurarUsuarioInicial(ctx context.Context, nombre string, co
 	}
 
 	usuario, err := s.Registrar(ctx, EntradaRegistro{
-		Nombre:     nombre,
+		Nombre:     nombreDesdeCorreo(correo),
 		Correo:     correo,
 		Contrasena: contrasena,
 	})
@@ -36,4 +38,12 @@ func (s *Servicio) AsegurarUsuarioInicial(ctx context.Context, nombre string, co
 	slog.Info("usuario inicial creado desde la configuración", "correo", usuario.Correo)
 
 	return nil
+}
+
+func nombreDesdeCorreo(correo string) string {
+	usuario, _, encontrado := strings.Cut(correo, "@")
+	if !encontrado || usuario == "" {
+		return "Usuario"
+	}
+	return usuario
 }
