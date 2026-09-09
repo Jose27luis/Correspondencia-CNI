@@ -57,7 +57,7 @@ func ejecutar() error {
 	cliente := asynq.NewClient(opcionesRedis)
 	defer cliente.Close()
 
-	manejador, err := server.NuevoRouter(pool, cfg, cliente)
+	manejador, err := server.NuevoRouter(ctx, pool, cfg, cliente)
 	if err != nil {
 		return err
 	}
