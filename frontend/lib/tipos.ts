@@ -93,6 +93,28 @@ export interface ResultadoPrueba {
   variables_sin_valor: string[];
 }
 
+export interface EstadoAsistente {
+  disponible: boolean;
+}
+
+export interface Borrador {
+  asunto: string;
+  cuerpo: string;
+}
+
+export interface Hallazgo {
+  gravedad: "alta" | "media" | "baja";
+  titulo: string;
+  detalle: string;
+  sugerencia: string;
+}
+
+export interface Revision {
+  veredicto: "lista" | "revisar" | "no_enviar";
+  resumen: string;
+  hallazgos: Hallazgo[];
+}
+
 export interface Envio {
   id: string;
   estado: EstadoEnvio;
