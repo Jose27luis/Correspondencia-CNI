@@ -35,6 +35,14 @@ RETURNING *;
 -- name: EliminarCorrespondencia :execrows
 DELETE FROM correspondencia WHERE id = $1 AND estado = 'borrador';
 
+-- name: AsignarPlantilla :one
+UPDATE correspondencia
+SET plantilla_url = $2,
+    plantilla_nombre = $3,
+    actualizado_en = now()
+WHERE id = $1 AND estado = 'borrador'
+RETURNING *;
+
 -- name: CrearAdjunto :one
 INSERT INTO adjunto (correspondencia_id, nombre_archivo, url_archivo, tipo, tamano_bytes)
 VALUES ($1, $2, $3, $4, $5)
