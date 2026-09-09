@@ -86,3 +86,25 @@ SELECT * FROM evento_envio WHERE envio_id = $1 ORDER BY fecha DESC;
 
 -- name: ObtenerEnvioPorMensaje :one
 SELECT id FROM envio WHERE proveedor_mensaje_id = $1;
+
+-- name: ContarPendientesDeCorrespondencia :one
+SELECT count(*) FROM envio
+WHERE correspondencia_id = $1 AND estado = 'pendiente';
+
+-- name: CerrarCorrespondenciaSiTermino :one
+UPDATE correspondencia c
+SET estado = CASE
+        WHEN NOT EXISTS (
+            SELECT 1 FROM envio e
+            WHERE e.correspondencia_id = c.id AND e.estado <> 'fallido'
+        ) THEN 'fallida'
+        ELSE 'enviada'
+    END,
+    actualizado_en = now()
+WHERE c.id = $1
+  AND c.estado IN ('encolada', 'enviando')
+  AND NOT EXISTS (
+      SELECT 1 FROM envio e
+      WHERE e.correspondencia_id = c.id AND e.estado = 'pendiente'
+  )
+RETURNING c.estado;
