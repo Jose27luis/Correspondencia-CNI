@@ -18,6 +18,7 @@ import (
 	"github.com/Jose27luis/Correspondencia-CNI/backend/internal/shared/db"
 	"github.com/Jose27luis/Correspondencia-CNI/backend/internal/shared/mailer"
 	"github.com/Jose27luis/Correspondencia-CNI/backend/internal/shared/storage"
+	"github.com/Jose27luis/Correspondencia-CNI/backend/internal/suppression"
 )
 
 const (
@@ -81,6 +82,7 @@ func ejecutar() error {
 		correspondence.NuevoRepositorio(pool),
 		proveedor,
 		almacen,
+		suppression.NuevoServicio(suppression.NuevoRepositorio(pool), cfg.JWTSecret, cfg.UrlPanel),
 		envioPorSegundo,
 	)
 
