@@ -10,6 +10,7 @@ var ErrEnvioRechazado = errors.New("el proveedor rechazó el correo")
 type Adjunto struct {
 	NombreArchivo string
 	UrlArchivo    string
+	Contenido     []byte
 }
 
 type Mensaje struct {
