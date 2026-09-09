@@ -303,8 +303,8 @@ export default function PaginaDetalleCorrespondencia() {
           <CardHeader>
             <CardTitle className="text-base">Editar borrador</CardTitle>
             <CardDescription>
-              Use variables como {"{nombre}"}, {"{empresa}"} o {"{pais}"} para personalizar cada
-              carta.
+              Puede usar campos de Word como «NOMBRES» o variables entre llaves como{" "}
+              {"{empresa}"}.
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
@@ -398,8 +398,9 @@ export default function PaginaDetalleCorrespondencia() {
           <CardHeader>
             <CardTitle className="text-base">Carta en Word personalizada</CardTitle>
             <CardDescription>
-              Suba el documento con el membrete de CNI. Cada empresa recibirá su propia copia con
-              las variables ya reemplazadas, conservando el formato original.
+              Suba el documento con el membrete de CNI. Cada empresa recibirá su propia copia, con
+              los campos de combinación como «NOMBRES» ya reemplazados y el formato original
+              intacto.
             </CardDescription>
           </CardHeader>
           <CardContent>
