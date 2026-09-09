@@ -1,11 +1,12 @@
 "use client";
 
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { Download, Loader2, Plus, Search, Trash2, Upload } from "lucide-react";
+import { Download, Loader2, Plus, Search, Sparkles, Trash2, Upload } from "lucide-react";
 import { useRef, useState } from "react";
 import { toast } from "sonner";
 
 import { DialogoConfirmacion } from "@/components/dialogo-confirmacion";
+import { PegarContactos } from "@/components/pegar-contactos";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import {
@@ -38,6 +39,9 @@ export default function PaginaContactos() {
   const [pagina, setPagina] = useState(0);
   const [formularioAbierto, setFormularioAbierto] = useState(false);
   const [porEliminar, setPorEliminar] = useState<Contacto | null>(null);
+  const [pegarAbierto, setPegarAbierto] = useState(false);
+  const [consultaIA, setConsultaIA] = useState("");
+  const [explicacion, setExplicacion] = useState("");
   const [nombre, setNombre] = useState("");
   const [empresa, setEmpresa] = useState("");
   const [correo, setCorreo] = useState("");
@@ -74,6 +78,35 @@ export default function PaginaContactos() {
     mutationFn: () => api.descargarPlantilla(),
     onError: () => {
       toast.error("No se pudo descargar la plantilla");
+    },
+  });
+
+  const asistente = useQuery({
+    queryKey: ["asistente"],
+    queryFn: () => api.estadoAsistente(),
+    staleTime: Infinity,
+  });
+
+  const interpretacion = useMutation({
+    mutationFn: () => api.interpretarBusqueda(consultaIA),
+    onSuccess: (criterios) => {
+      if (criterios.terminos.length === 0) {
+        toast.warning("No se entendió qué buscar", {
+          description: "Pruebe nombrando el rubro, el país o el tipo de empresa.",
+        });
+        return;
+      }
+
+      setBusqueda(criterios.terminos[0] ?? "");
+      setPagina(0);
+      setExplicacion(
+        criterios.terminos.length > 1
+          ? `${criterios.explicacion} Se buscó por "${criterios.terminos[0]}"; otros términos sugeridos: ${criterios.terminos.slice(1).join(", ")}.`
+          : criterios.explicacion,
+      );
+    },
+    onError: (fallo: unknown) => {
+      toast.error(fallo instanceof ErrorPeticion ? fallo.message : "No se pudo interpretar");
     },
   });
 
@@ -148,6 +181,13 @@ export default function PaginaContactos() {
             Importar archivo
           </Button>
 
+          {asistente.data?.disponible && (
+            <Button type="button" variant="outline" onClick={() => setPegarAbierto(true)}>
+              <Sparkles className="mr-2 h-4 w-4" aria-hidden="true" />
+              Pegar contactos
+            </Button>
+          )}
+
           <Button type="button" onClick={() => setFormularioAbierto(true)}>
             <Plus className="mr-2 h-4 w-4" aria-hidden="true" />
             Nuevo contacto
@@ -218,6 +258,45 @@ export default function PaginaContactos() {
               className="pl-9"
             />
           </div>
+
+          {asistente.data?.disponible && (
+            <div className="mt-3 space-y-2">
+              <div className="flex flex-wrap items-end gap-2">
+                <div className="min-w-64 flex-1 space-y-1.5">
+                  <Label htmlFor="consulta" className="text-xs text-muted-foreground">
+                    O descríbalo con sus palabras: molinos de Brasil, transportistas del sur
+                  </Label>
+                  <Input
+                    id="consulta"
+                    value={consultaIA}
+                    onChange={(evento) => setConsultaIA(evento.target.value)}
+                    onKeyDown={(evento) => {
+                      if (evento.key === "Enter" && consultaIA.trim().length > 2) {
+                        interpretacion.mutate();
+                      }
+                    }}
+                  />
+                </div>
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={() => interpretacion.mutate()}
+                  disabled={interpretacion.isPending || consultaIA.trim().length < 3}
+                >
+                  {interpretacion.isPending ? (
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" aria-hidden="true" />
+                  ) : (
+                    <Sparkles className="mr-2 h-4 w-4" aria-hidden="true" />
+                  )}
+                  Buscar
+                </Button>
+              </div>
+
+              {explicacion && (
+                <p className="text-xs text-emerald-800">{explicacion}</p>
+              )}
+            </div>
+          )}
         </CardHeader>
 
         <CardContent>
@@ -375,6 +454,12 @@ export default function PaginaContactos() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      <PegarContactos
+        abierto={pegarAbierto}
+        alCambiar={setPegarAbierto}
+        alImportar={refrescar}
+      />
 
       <DialogoConfirmacion
         abierto={porEliminar !== null}
