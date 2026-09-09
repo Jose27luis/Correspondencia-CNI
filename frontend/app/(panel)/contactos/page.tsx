@@ -70,6 +70,13 @@ export default function PaginaContactos() {
     },
   });
 
+  const descargaPlantilla = useMutation({
+    mutationFn: () => api.descargarPlantilla(),
+    onError: () => {
+      toast.error("No se pudo descargar la plantilla");
+    },
+  });
+
   const creacion = useMutation({
     mutationFn: () =>
       api.crearContacto({ nombre, empresa, correo, pais: pais.trim() ? pais : null }),
@@ -117,7 +124,7 @@ export default function PaginaContactos() {
           <input
             ref={referenciaArchivo}
             type="file"
-            accept=".csv,text/csv"
+            accept=".xlsx,.csv,text/csv,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
             className="hidden"
             onChange={(evento) => {
               const archivo = evento.target.files?.[0];
@@ -138,7 +145,7 @@ export default function PaginaContactos() {
             ) : (
               <Upload className="mr-2 h-4 w-4" aria-hidden="true" />
             )}
-            Importar CSV
+            Importar archivo
           </Button>
 
           <Button type="button" onClick={() => setFormularioAbierto(true)}>
@@ -153,7 +160,7 @@ export default function PaginaContactos() {
           <div className="max-w-2xl space-y-2">
             <p className="text-sm font-medium">Cómo preparar el archivo</p>
             <p className="text-sm text-muted-foreground">
-              Guarde su Excel como CSV UTF-8. Solo son obligatorias tres columnas:{" "}
+              Suba su archivo de Excel (.xlsx) o un CSV. Solo son obligatorias tres columnas:{" "}
               <code className="rounded bg-zinc-100 px-1 py-0.5 text-xs">nombre</code>,{" "}
               <code className="rounded bg-zinc-100 px-1 py-0.5 text-xs">empresa</code> y{" "}
               <code className="rounded bg-zinc-100 px-1 py-0.5 text-xs">correo</code>. El orden no
@@ -173,11 +180,19 @@ export default function PaginaContactos() {
             </p>
           </div>
 
-          <Button asChild variant="outline" size="sm">
-            <a href="/plantilla-contactos.csv" download>
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            onClick={() => descargaPlantilla.mutate()}
+            disabled={descargaPlantilla.isPending}
+          >
+            {descargaPlantilla.isPending ? (
+              <Loader2 className="mr-2 h-4 w-4 animate-spin" aria-hidden="true" />
+            ) : (
               <Download className="mr-2 h-4 w-4" aria-hidden="true" />
-              Descargar plantilla
-            </a>
+            )}
+            Descargar plantilla Excel
           </Button>
         </CardContent>
       </Card>
