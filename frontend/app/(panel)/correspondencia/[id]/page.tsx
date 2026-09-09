@@ -7,6 +7,7 @@ import {
   FileText,
   FileUp,
   Loader2,
+  MailCheck,
   Paperclip,
   Pencil,
   Send,
@@ -183,6 +184,25 @@ export default function PaginaDetalleCorrespondencia() {
     },
   });
 
+  const prueba = useMutation({
+    mutationFn: () => api.enviarPrueba(id),
+    onSuccess: (resultado) => {
+      toast.success(
+        resultado.simulada
+          ? "Prueba simulada, no se envió ningún correo real"
+          : `Prueba enviada a ${resultado.destinatario}`,
+        {
+          description: resultado.simulada
+            ? "El sistema está en modo bitácora. Configure Resend para recibirla."
+            : "Revise su bandeja antes de enviar a toda la lista.",
+        },
+      );
+    },
+    onError: (fallo: unknown) => {
+      toast.error(fallo instanceof ErrorPeticion ? fallo.message : "No se pudo enviar la prueba");
+    },
+  });
+
   const envio = useMutation({
     mutationFn: () => api.enviar(id),
     onSuccess: (resultado) => {
@@ -240,6 +260,19 @@ export default function PaginaDetalleCorrespondencia() {
 
         {esBorrador && !editando && (
           <div className="flex gap-2">
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => prueba.mutate()}
+              disabled={prueba.isPending}
+            >
+              {prueba.isPending ? (
+                <Loader2 className="mr-2 h-4 w-4 animate-spin" aria-hidden="true" />
+              ) : (
+                <MailCheck className="mr-2 h-4 w-4" aria-hidden="true" />
+              )}
+              Enviar prueba
+            </Button>
             <Button type="button" variant="outline" onClick={() => setEditando(true)}>
               <Pencil className="mr-2 h-4 w-4" aria-hidden="true" />
               Editar
