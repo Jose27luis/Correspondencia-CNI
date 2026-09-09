@@ -95,8 +95,8 @@ export default function PaginaNuevaCorrespondencia() {
         <CardHeader>
           <CardTitle className="text-base">Partir de una carta en Word</CardTitle>
           <CardDescription>
-            Suba el documento .docx que ya tiene redactado. El sistema leerá su texto y lo cargará
-            abajo para que revise las variables antes de enviar.
+            Suba el documento .docx que ya tiene redactado. Reconoce tanto los campos de
+            combinación de Word, como «NOMBRES», como las variables entre llaves, como {"{nombre}"}.
           </CardDescription>
         </CardHeader>
         <CardContent>
@@ -151,8 +151,9 @@ export default function PaginaNuevaCorrespondencia() {
           {documentoSinVariables && (
             <div className="mt-4 rounded-lg border border-amber-200 bg-amber-50 px-4 py-3">
               <p className="text-sm text-amber-900">
-                El documento no tiene variables entre llaves, así que todas las empresas recibirán
-                el mismo texto. Escriba {"{nombre}"} o {"{empresa}"} donde deba personalizarse.
+                El documento no tiene campos de combinación ni variables, así que todas las
+                empresas recibirán el mismo texto. Escriba «NOMBRES» o {"{empresa}"} donde deba
+                personalizarse.
               </p>
             </div>
           )}
@@ -163,7 +164,8 @@ export default function PaginaNuevaCorrespondencia() {
         <CardHeader>
           <CardTitle className="text-base">Contenido</CardTitle>
           <CardDescription>
-            Las variables entre llaves se reemplazan con los datos de cada destinatario.
+            Se reemplazan los campos de Word como «NOMBRES» y las variables entre llaves como{" "}
+            {"{empresa}"}.
           </CardDescription>
         </CardHeader>
         <CardContent>
