@@ -39,7 +39,6 @@ func NuevoRouter(ctx context.Context, pool *pgxpool.Pool, cfg config.Config, cli
 
 	if err := servicioUsuarios.AsegurarUsuarioInicial(
 		ctx,
-		cfg.UsuarioInicialNombre,
 		cfg.UsuarioInicialCorreo,
 		cfg.UsuarioInicialClave,
 	); err != nil {
