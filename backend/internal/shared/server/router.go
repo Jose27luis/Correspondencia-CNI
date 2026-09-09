@@ -53,7 +53,7 @@ func NuevoRouter(ctx context.Context, pool *pgxpool.Pool, cfg config.Config, cli
 	repositorioCorrespondencia := correspondence.NuevoRepositorio(pool)
 	repositorioEnvios := dispatches.NuevoRepositorio(pool)
 
-	handlerUsuarios := users.NuevoHandler(servicioUsuarios)
+	handlerUsuarios := users.NuevoHandler(servicioUsuarios, middleware.NuevoLimitadorIntentos())
 	handlerContactos := contacts.NuevoHandler(contacts.NuevoServicio(contacts.NuevoRepositorio(pool)))
 	handlerListas := lists.NuevoHandler(lists.NuevoServicio(lists.NuevoRepositorio(pool)))
 	handlerCorrespondencia := correspondence.NuevoHandler(correspondence.NuevoServicio(repositorioCorrespondencia, almacen))
