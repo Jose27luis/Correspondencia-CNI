@@ -4,6 +4,7 @@ import (
 	"errors"
 	"log/slog"
 	"net/http"
+	"strings"
 
 	"github.com/go-chi/chi/v5"
 	"github.com/go-playground/validator/v10"
@@ -31,6 +32,7 @@ func (h *Handler) Registrar(r chi.Router) {
 		rc.Get("/{id}", h.obtener)
 		rc.Put("/{id}", h.actualizar)
 		rc.Delete("/{id}", h.eliminar)
+		rc.Post("/leer-documento", h.leerDocumento)
 		rc.Get("/{id}/previsualizacion", h.previsualizar)
 		rc.Post("/{id}/adjuntos", h.agregarAdjunto)
 		rc.Delete("/{id}/adjuntos/{adjuntoId}", h.eliminarAdjunto)
@@ -135,6 +137,37 @@ func (h *Handler) previsualizar(w http.ResponseWriter, r *http.Request) {
 	}
 
 	httpx.JSON(w, http.StatusOK, previsualizacion)
+}
+
+func (h *Handler) leerDocumento(w http.ResponseWriter, r *http.Request) {
+	if err := r.ParseMultipartForm(tamanoMaximoSubida); err != nil {
+		httpx.Error(w, http.StatusBadRequest, "no se pudo leer el archivo enviado")
+		return
+	}
+
+	archivo, cabecera, err := r.FormFile("archivo")
+	if err != nil {
+		httpx.Error(w, http.StatusBadRequest, "falta el archivo en el campo archivo")
+		return
+	}
+	defer archivo.Close()
+
+	if !strings.HasSuffix(strings.ToLower(cabecera.Filename), ".docx") {
+		httpx.Error(w, http.StatusUnsupportedMediaType, "el documento debe ser un archivo .docx")
+		return
+	}
+
+	contenido, err := LeerWord(archivo, cabecera.Size)
+	if err != nil {
+		if errors.Is(err, ErrWordInvalido) || errors.Is(err, ErrWordVacio) {
+			httpx.Error(w, http.StatusUnprocessableEntity, err.Error())
+			return
+		}
+		responderError(w, err)
+		return
+	}
+
+	httpx.JSON(w, http.StatusOK, contenido)
 }
 
 func (h *Handler) agregarAdjunto(w http.ResponseWriter, r *http.Request) {
