@@ -36,6 +36,14 @@ func (p *ProveedorResend) Nombre() string {
 func (p *ProveedorResend) Enviar(ctx context.Context, mensaje Mensaje) (Resultado, error) {
 	adjuntos := make([]*resend.Attachment, 0, len(mensaje.Adjuntos))
 	for _, adjunto := range mensaje.Adjuntos {
+		if len(adjunto.Contenido) > 0 {
+			adjuntos = append(adjuntos, &resend.Attachment{
+				Content:  adjunto.Contenido,
+				Filename: adjunto.NombreArchivo,
+			})
+			continue
+		}
+
 		adjuntos = append(adjuntos, &resend.Attachment{
 			Path:     adjunto.UrlArchivo,
 			Filename: adjunto.NombreArchivo,
