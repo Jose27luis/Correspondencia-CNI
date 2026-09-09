@@ -51,6 +51,29 @@ interface OpcionesPeticion {
   parametros?: Record<string, string | number | undefined>;
 }
 
+export async function descargar(ruta: string, nombreArchivo: string): Promise<void> {
+  const cabeceras: Record<string, string> = {};
+  const token = leerToken();
+  if (token) {
+    cabeceras.Authorization = `Bearer ${token}`;
+  }
+
+  const respuesta = await fetch(construirUrl(ruta).toString(), { headers: cabeceras });
+
+  if (!respuesta.ok) {
+    throw new ErrorPeticion(respuesta.status, "No se pudo descargar el archivo");
+  }
+
+  const contenido = await respuesta.blob();
+  const enlace = document.createElement("a");
+  enlace.href = URL.createObjectURL(contenido);
+  enlace.download = nombreArchivo;
+  document.body.appendChild(enlace);
+  enlace.click();
+  document.body.removeChild(enlace);
+  URL.revokeObjectURL(enlace.href);
+}
+
 export async function peticion<T>(ruta: string, opciones: OpcionesPeticion = {}): Promise<T> {
   const { metodo = "GET", cuerpo, formulario, parametros } = opciones;
 
