@@ -1,4 +1,4 @@
-import { peticion } from "./api-client";
+import { descargar, peticion } from "./api-client";
 import type {
   Adjunto,
   Contacto,
@@ -52,6 +52,10 @@ export const api = {
       metodo: "POST",
       formulario,
     });
+  },
+
+  descargarPlantilla(): Promise<void> {
+    return descargar("/contactos/plantilla", "plantilla-contactos.xlsx");
   },
 
   listarListas(): Promise<Paginado<Lista>> {
