@@ -70,6 +70,89 @@ func (s *Servicio) Eliminar(ctx context.Context, id uuid.UUID) error {
 	return s.repositorio.Eliminar(ctx, id)
 }
 
+func (s *Servicio) Importar(ctx context.Context, lector io.Reader, nombreArchivo string) (ResumenImportacion, error) {
+	if esArchivoExcel(nombreArchivo) {
+		filas, err := LeerExcel(lector)
+		if err != nil {
+			return ResumenImportacion{}, err
+		}
+		return s.importarFilas(ctx, filas)
+	}
+
+	return s.ImportarCSV(ctx, lector)
+}
+
+func (s *Servicio) importarFilas(ctx context.Context, filas [][]string) (ResumenImportacion, error) {
+	if len(filas) == 0 {
+		return ResumenImportacion{}, ErrCabeceraCSVInvalida
+	}
+
+	indices, err := mapearCabecera(filas[0])
+	if err != nil {
+		return ResumenImportacion{}, err
+	}
+
+	if len(filas)-1 > maximoFilasCSV {
+		return ResumenImportacion{}, fmt.Errorf("el archivo supera el máximo de %d filas", maximoFilasCSV)
+	}
+
+	resumen := ResumenImportacion{Errores: []string{}}
+
+	for posicion, fila := range filas[1:] {
+		numeroFila := posicion + 2
+		s.procesarFila(ctx, fila, indices, numeroFila, &resumen)
+	}
+
+	return resumen, nil
+}
+
+func (s *Servicio) procesarFila(
+	ctx context.Context,
+	fila []string,
+	indices indicesCSV,
+	numeroFila int,
+	resumen *ResumenImportacion,
+) {
+	if filaVacia(fila) {
+		return
+	}
+
+	entrada, err := construirEntrada(fila, indices)
+	if err != nil {
+		resumen.Omitidos++
+		resumen.Errores = append(resumen.Errores, fmt.Sprintf("fila %d: %s", numeroFila, err.Error()))
+		return
+	}
+
+	if err := s.validador.Struct(entrada); err != nil {
+		resumen.Omitidos++
+		resumen.Errores = append(resumen.Errores, fmt.Sprintf("fila %d: datos inválidos", numeroFila))
+		return
+	}
+
+	_, fueCreado, err := s.repositorio.Importar(ctx, entrada)
+	if err != nil {
+		resumen.Omitidos++
+		resumen.Errores = append(resumen.Errores, fmt.Sprintf("fila %d: no se pudo guardar", numeroFila))
+		return
+	}
+
+	if fueCreado {
+		resumen.Creados++
+	} else {
+		resumen.Actualizados++
+	}
+}
+
+func filaVacia(fila []string) bool {
+	for _, celda := range fila {
+		if strings.TrimSpace(celda) != "" {
+			return false
+		}
+	}
+	return true
+}
+
 func (s *Servicio) ImportarCSV(ctx context.Context, lector io.Reader) (ResumenImportacion, error) {
 	lectorCSV := csv.NewReader(lector)
 	lectorCSV.TrimLeadingSpace = true
