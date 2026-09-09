@@ -1,0 +1,17 @@
+[Unit]
+Description=API de Correspondencia CNI
+After=network.target postgresql.service redis-server.service
+
+[Service]
+Type=simple
+WorkingDirectory=/var/www/Correspondencia-CNI/backend
+EnvironmentFile=/var/www/Correspondencia-CNI/backend/.env
+ExecStart=/var/www/Correspondencia-CNI/backend/bin/api
+Restart=always
+RestartSec=5
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=correspondencia-api
+
+[Install]
+WantedBy=multi-user.target
