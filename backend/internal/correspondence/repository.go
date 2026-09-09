@@ -132,6 +132,27 @@ func (r *Repositorio) ListarAdjuntos(ctx context.Context, correspondenciaID uuid
 	return adjuntos, nil
 }
 
+func (r *Repositorio) AsignarPlantilla(ctx context.Context, id uuid.UUID, url *string, nombre *string) (Correspondencia, error) {
+	fila, err := r.consultas.AsignarPlantilla(ctx, sqlcgen.AsignarPlantillaParams{
+		ID:              id,
+		PlantillaUrl:    url,
+		PlantillaNombre: nombre,
+	})
+	if err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return Correspondencia{}, r.distinguirNoEncontrada(ctx, id)
+		}
+		return Correspondencia{}, traducirError(err)
+	}
+
+	adjuntos, err := r.ListarAdjuntos(ctx, id)
+	if err != nil {
+		return Correspondencia{}, err
+	}
+
+	return desdeFila(fila, adjuntos), nil
+}
+
 func (r *Repositorio) CrearAdjunto(ctx context.Context, correspondenciaID uuid.UUID, entrada EntradaAdjunto) (Adjunto, error) {
 	fila, err := r.consultas.CrearAdjunto(ctx, sqlcgen.CrearAdjuntoParams{
 		CorrespondenciaID: correspondenciaID,
