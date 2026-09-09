@@ -26,6 +26,7 @@ func (h *Handler) Registrar(r chi.Router) {
 		rc.Get("/", h.listar)
 		rc.Post("/", h.crear)
 		rc.Post("/importar", h.importar)
+		rc.Get("/plantilla", h.plantilla)
 		rc.Get("/{id}", h.obtener)
 		rc.Put("/{id}", h.actualizar)
 		rc.Delete("/{id}", h.eliminar)
@@ -136,9 +137,9 @@ func (h *Handler) importar(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	resumen, err := h.servicio.ImportarCSV(r.Context(), archivo)
+	resumen, err := h.servicio.Importar(r.Context(), archivo, cabecera.Filename)
 	if err != nil {
-		if errors.Is(err, ErrCabeceraCSVInvalida) {
+		if errors.Is(err, ErrCabeceraCSVInvalida) || errors.Is(err, ErrExcelSinFilas) {
 			httpx.Error(w, http.StatusUnprocessableEntity, err.Error())
 			return
 		}
@@ -147,6 +148,26 @@ func (h *Handler) importar(w http.ResponseWriter, r *http.Request) {
 	}
 
 	httpx.JSON(w, http.StatusOK, resumen)
+}
+
+func (h *Handler) plantilla(w http.ResponseWriter, _ *http.Request) {
+	libro, err := GenerarPlantilla()
+	if err != nil {
+		slog.Error("no se pudo generar la plantilla", "error", err)
+		httpx.Error(w, http.StatusInternalServerError, "no se pudo generar la plantilla")
+		return
+	}
+	defer libro.Close()
+
+	w.Header().Set(
+		"Content-Type",
+		"application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+	)
+	w.Header().Set("Content-Disposition", `attachment; filename="plantilla-contactos.xlsx"`)
+
+	if err := libro.Write(w); err != nil {
+		slog.Error("no se pudo enviar la plantilla", "error", err)
+	}
 }
 
 func responderError(w http.ResponseWriter, err error) {
