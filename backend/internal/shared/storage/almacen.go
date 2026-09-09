@@ -15,8 +15,9 @@ import (
 const permisosDirectorio = 0o755
 
 var (
-	ErrTipoNoPermitido = errors.New("el tipo de archivo no está permitido")
-	ErrArchivoVacio    = errors.New("el archivo está vacío")
+	ErrTipoNoPermitido     = errors.New("el tipo de archivo no está permitido")
+	ErrArchivoVacio        = errors.New("el archivo está vacío")
+	ErrArchivoNoEncontrado = errors.New("el archivo no está en el almacén")
 )
 
 var extensionesPermitidas = map[string]string{
@@ -91,6 +92,23 @@ func (a *Almacen) Guardar(archivo multipart.File, cabecera *multipart.FileHeader
 		Tipo:          tipo,
 		TamanoBytes:   escritos,
 	}, nil
+}
+
+func (a *Almacen) Leer(urlArchivo string) ([]byte, error) {
+	nombre := filepath.Base(urlArchivo)
+	if nombre == "" || nombre == "." || nombre == "/" || strings.Contains(nombre, "..") {
+		return nil, ErrArchivoNoEncontrado
+	}
+
+	contenido, err := os.ReadFile(filepath.Join(a.directorio, nombre))
+	if err != nil {
+		if errors.Is(err, os.ErrNotExist) {
+			return nil, ErrArchivoNoEncontrado
+		}
+		return nil, fmt.Errorf("no se pudo leer el archivo: %w", err)
+	}
+
+	return contenido, nil
 }
 
 func (a *Almacen) Eliminar(urlArchivo string) error {
