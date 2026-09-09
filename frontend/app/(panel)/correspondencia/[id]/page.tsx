@@ -11,6 +11,7 @@ import {
   Paperclip,
   Pencil,
   Send,
+  Sparkles,
   Trash2,
   TriangleAlert,
   X,
@@ -21,6 +22,7 @@ import { useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
 
 import { DialogoConfirmacion } from "@/components/dialogo-confirmacion";
+import { RevisionCarta } from "@/components/revision-carta";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -184,6 +186,34 @@ export default function PaginaDetalleCorrespondencia() {
     },
   });
 
+  const asistente = useQuery({
+    queryKey: ["asistente"],
+    queryFn: () => api.estadoAsistente(),
+    staleTime: Infinity,
+  });
+
+  const revision = useMutation({
+    mutationFn: () =>
+      api.revisarConAsistente({
+        asunto: pieza.data?.asunto ?? "",
+        cuerpo: pieza.data?.cuerpo ?? "",
+      }),
+    onSuccess: (resultado) => {
+      if (resultado.veredicto === "lista") {
+        toast.success("La carta está lista para enviar");
+        return;
+      }
+      toast.warning(
+        resultado.veredicto === "no_enviar"
+          ? "El asistente recomienda no enviarla todavía"
+          : `Se encontraron ${resultado.hallazgos.length} detalles por revisar`,
+      );
+    },
+    onError: (fallo: unknown) => {
+      toast.error(fallo instanceof ErrorPeticion ? fallo.message : "No se pudo revisar la carta");
+    },
+  });
+
   const prueba = useMutation({
     mutationFn: () => api.enviarPrueba(id),
     onSuccess: (resultado) => {
@@ -260,6 +290,21 @@ export default function PaginaDetalleCorrespondencia() {
 
         {esBorrador && !editando && (
           <div className="flex gap-2">
+            {asistente.data?.disponible && (
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => revision.mutate()}
+                disabled={revision.isPending}
+              >
+                {revision.isPending ? (
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" aria-hidden="true" />
+                ) : (
+                  <Sparkles className="mr-2 h-4 w-4" aria-hidden="true" />
+                )}
+                Revisar
+              </Button>
+            )}
             <Button
               type="button"
               variant="outline"
@@ -425,6 +470,8 @@ export default function PaginaDetalleCorrespondencia() {
           </Card>
         )
       )}
+
+      {revision.data && <RevisionCarta revision={revision.data} />}
 
       {esBorrador && !editando && (
         <Card className={datos.plantilla_url ? "border-emerald-200 bg-emerald-50/40" : ""}>
