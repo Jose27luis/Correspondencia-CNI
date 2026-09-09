@@ -18,8 +18,10 @@ import (
 	"github.com/Jose27luis/Correspondencia-CNI/backend/internal/shared/auth"
 	"github.com/Jose27luis/Correspondencia-CNI/backend/internal/shared/config"
 	"github.com/Jose27luis/Correspondencia-CNI/backend/internal/shared/httpx"
+	"github.com/Jose27luis/Correspondencia-CNI/backend/internal/shared/mailer"
 	"github.com/Jose27luis/Correspondencia-CNI/backend/internal/shared/middleware"
 	"github.com/Jose27luis/Correspondencia-CNI/backend/internal/shared/storage"
+	"github.com/Jose27luis/Correspondencia-CNI/backend/internal/suppression"
 	"github.com/Jose27luis/Correspondencia-CNI/backend/internal/users"
 	"github.com/Jose27luis/Correspondencia-CNI/backend/internal/webhooks"
 )
@@ -50,13 +52,21 @@ func NuevoRouter(ctx context.Context, pool *pgxpool.Pool, cfg config.Config, cli
 		return nil, err
 	}
 
+	proveedor, err := construirProveedor(cfg)
+	if err != nil {
+		return nil, err
+	}
+
 	repositorioCorrespondencia := correspondence.NuevoRepositorio(pool)
 	repositorioEnvios := dispatches.NuevoRepositorio(pool)
+	repositorioExclusiones := suppression.NuevoRepositorio(pool)
+	servicioExclusiones := suppression.NuevoServicio(repositorioExclusiones, cfg.JWTSecret, cfg.UrlPanel)
+	handlerExclusiones := suppression.NuevoHandler(servicioExclusiones)
 
 	handlerUsuarios := users.NuevoHandler(servicioUsuarios, middleware.NuevoLimitadorIntentos())
 	handlerContactos := contacts.NuevoHandler(contacts.NuevoServicio(contacts.NuevoRepositorio(pool)))
 	handlerListas := lists.NuevoHandler(lists.NuevoServicio(lists.NuevoRepositorio(pool)))
-	handlerCorrespondencia := correspondence.NuevoHandler(correspondence.NuevoServicio(repositorioCorrespondencia, almacen))
+	handlerCorrespondencia := correspondence.NuevoHandler(correspondence.NuevoServicio(repositorioCorrespondencia, almacen, proveedor))
 	handlerEnvios := dispatches.NuevoHandler(dispatches.NuevoServicio(repositorioEnvios, repositorioCorrespondencia, cliente))
 
 	r := chi.NewRouter()
@@ -72,7 +82,8 @@ func NuevoRouter(ctx context.Context, pool *pgxpool.Pool, cfg config.Config, cli
 		api.Get("/salud", manejarSalud(pool))
 
 		handlerUsuarios.RegistrarPublicas(api)
-		registrarWebhooks(api, cfg, repositorioEnvios)
+		registrarWebhooks(api, cfg, repositorioEnvios, repositorioExclusiones)
+		handlerExclusiones.RegistrarPublicas(api)
 
 		api.Group(func(protegidas chi.Router) {
 			protegidas.Use(middleware.RequiereAutenticacion(emisor))
@@ -81,6 +92,7 @@ func NuevoRouter(ctx context.Context, pool *pgxpool.Pool, cfg config.Config, cli
 			handlerListas.Registrar(protegidas)
 			handlerCorrespondencia.Registrar(protegidas)
 			handlerEnvios.Registrar(protegidas)
+			handlerExclusiones.RegistrarProtegidas(protegidas)
 		})
 	})
 
@@ -95,14 +107,27 @@ func NuevoRouter(ctx context.Context, pool *pgxpool.Pool, cfg config.Config, cli
 	return r, nil
 }
 
-func registrarWebhooks(api chi.Router, cfg config.Config, repositorio *dispatches.Repositorio) {
+func construirProveedor(cfg config.Config) (mailer.Proveedor, error) {
+	if cfg.ModoEnvio == config.ModoEnvioBitacora {
+		return mailer.NuevoProveedorBitacora(), nil
+	}
+
+	return mailer.NuevoProveedorResend(cfg.ResendAPIKey, cfg.RemitenteCorreo, cfg.RemitenteNombre)
+}
+
+func registrarWebhooks(
+	api chi.Router,
+	cfg config.Config,
+	repositorio *dispatches.Repositorio,
+	exclusiones *suppression.Repositorio,
+) {
 	verificador, err := webhooks.NuevoVerificador(cfg.ResendWebhookSecret)
 	if err != nil {
 		slog.Warn("el webhook de Resend queda deshabilitado", "motivo", err)
 		return
 	}
 
-	webhooks.NuevoHandler(verificador, repositorio).Registrar(api)
+	webhooks.NuevoHandler(verificador, repositorio, exclusiones).Registrar(api)
 }
 
 func manejarSalud(pool *pgxpool.Pool) http.HandlerFunc {
