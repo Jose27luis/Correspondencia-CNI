@@ -65,6 +65,11 @@ export interface Correspondencia {
   actualizado_en: string;
 }
 
+export interface ContenidoWord {
+  cuerpo: string;
+  variables: string[];
+}
+
 export interface Previsualizacion {
   asunto: string;
   cuerpo: string;
