@@ -10,6 +10,7 @@ import (
 	"github.com/jackc/pgx/v5/pgxpool"
 
 	"github.com/Jose27luis/Correspondencia-CNI/backend/internal/contacts"
+	"github.com/Jose27luis/Correspondencia-CNI/backend/internal/lists"
 	"github.com/Jose27luis/Correspondencia-CNI/backend/internal/shared/auth"
 	"github.com/Jose27luis/Correspondencia-CNI/backend/internal/shared/httpx"
 	"github.com/Jose27luis/Correspondencia-CNI/backend/internal/shared/middleware"
@@ -29,6 +30,7 @@ func NuevoRouter(pool *pgxpool.Pool, emisor *auth.Emisor) (http.Handler, error) 
 
 	handlerUsuarios := users.NuevoHandler(servicioUsuarios)
 	handlerContactos := contacts.NuevoHandler(contacts.NuevoServicio(contacts.NuevoRepositorio(pool)))
+	handlerListas := lists.NuevoHandler(lists.NuevoServicio(lists.NuevoRepositorio(pool)))
 
 	r := chi.NewRouter()
 
@@ -48,6 +50,7 @@ func NuevoRouter(pool *pgxpool.Pool, emisor *auth.Emisor) (http.Handler, error) 
 			protegidas.Use(middleware.RequiereAutenticacion(emisor))
 			handlerUsuarios.RegistrarProtegidas(protegidas)
 			handlerContactos.Registrar(protegidas)
+			handlerListas.Registrar(protegidas)
 		})
 	})
 
