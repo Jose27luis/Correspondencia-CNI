@@ -9,6 +9,7 @@ import (
 	"github.com/go-chi/chi/v5/middleware"
 	"github.com/jackc/pgx/v5/pgxpool"
 
+	"github.com/Jose27luis/Correspondencia-CNI/backend/internal/contacts"
 	"github.com/Jose27luis/Correspondencia-CNI/backend/internal/shared/httpx"
 )
 
@@ -27,8 +28,11 @@ func NuevoRouter(pool *pgxpool.Pool) http.Handler {
 
 	r.Get("/salud", manejarSalud(pool))
 
+	handlerContactos := contacts.NuevoHandler(contacts.NuevoServicio(contacts.NuevoRepositorio(pool)))
+
 	r.Route("/api", func(api chi.Router) {
 		api.Get("/salud", manejarSalud(pool))
+		handlerContactos.Registrar(api)
 	})
 
 	r.NotFound(func(w http.ResponseWriter, r *http.Request) {
