@@ -10,8 +10,10 @@ import type {
   Previsualizacion,
   ResultadoEncolado,
   ResumenEnvios,
+  ResultadoPrueba,
   ResumenImportacion,
   Sesion,
+  Supresion,
   Usuario,
 } from "./tipos";
 
@@ -164,6 +166,22 @@ export const api = {
 
   previsualizar(id: string): Promise<Previsualizacion> {
     return peticion<Previsualizacion>(`/correspondencia/${id}/previsualizacion`);
+  },
+
+  enviarPrueba(id: string): Promise<ResultadoPrueba> {
+    return peticion<ResultadoPrueba>(`/correspondencia/${id}/prueba`, { metodo: "POST" });
+  },
+
+  listarExclusiones(): Promise<Paginado<Supresion>> {
+    return peticion<Paginado<Supresion>>("/exclusiones");
+  },
+
+  excluirCorreo(correo: string, detalle: string): Promise<void> {
+    return peticion<void>("/exclusiones", { metodo: "POST", cuerpo: { correo, detalle } });
+  },
+
+  quitarExclusion(correo: string): Promise<void> {
+    return peticion<void>(`/exclusiones/${encodeURIComponent(correo)}`, { metodo: "DELETE" });
   },
 
   enviar(id: string): Promise<ResultadoEncolado> {
