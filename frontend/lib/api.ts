@@ -2,6 +2,7 @@ import { descargar, peticion } from "./api-client";
 import type {
   Adjunto,
   Contacto,
+  ContenidoWord,
   Correspondencia,
   Envio,
   Lista,
@@ -95,6 +96,15 @@ export const api = {
 
   obtenerCorrespondencia(id: string): Promise<Correspondencia> {
     return peticion<Correspondencia>(`/correspondencia/${id}`);
+  },
+
+  leerDocumento(archivo: File): Promise<ContenidoWord> {
+    const formulario = new FormData();
+    formulario.append("archivo", archivo);
+    return peticion<ContenidoWord>("/correspondencia/leer-documento", {
+      metodo: "POST",
+      formulario,
+    });
   },
 
   crearCorrespondencia(datos: {
