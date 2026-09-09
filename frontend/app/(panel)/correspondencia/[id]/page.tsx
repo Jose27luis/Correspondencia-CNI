@@ -4,6 +4,8 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { AnimatePresence, motion } from "framer-motion";
 import {
   ArrowLeft,
+  FileText,
+  FileUp,
   Loader2,
   Paperclip,
   Pencil,
@@ -66,6 +68,7 @@ export default function PaginaDetalleCorrespondencia() {
   const [confirmarEnvio, setConfirmarEnvio] = useState(false);
   const [confirmarBorrado, setConfirmarBorrado] = useState(false);
   const referenciaArchivo = useRef<HTMLInputElement>(null);
+  const referenciaPlantilla = useRef<HTMLInputElement>(null);
 
   const pieza = useQuery({
     queryKey: ["correspondencia", id],
@@ -124,6 +127,27 @@ export default function PaginaDetalleCorrespondencia() {
     },
     onError: (fallo: unknown) => {
       toast.error(fallo instanceof ErrorPeticion ? fallo.message : "No se pudo guardar");
+    },
+  });
+
+  const subidaPlantilla = useMutation({
+    mutationFn: (archivo: File) => api.subirPlantilla(id, archivo),
+    onSuccess: () => {
+      refrescar();
+      toast.success("Plantilla cargada", {
+        description: "Cada empresa recibirá su propia versión del documento.",
+      });
+    },
+    onError: (fallo: unknown) => {
+      toast.error(fallo instanceof ErrorPeticion ? fallo.message : "No se pudo subir la plantilla");
+    },
+  });
+
+  const quitadoPlantilla = useMutation({
+    mutationFn: () => api.quitarPlantilla(id),
+    onSuccess: () => {
+      refrescar();
+      toast.success("Plantilla quitada");
     },
   });
 
@@ -370,11 +394,78 @@ export default function PaginaDetalleCorrespondencia() {
       )}
 
       {esBorrador && !editando && (
+        <Card className={datos.plantilla_url ? "border-emerald-200 bg-emerald-50/40" : ""}>
+          <CardHeader>
+            <CardTitle className="text-base">Carta en Word personalizada</CardTitle>
+            <CardDescription>
+              Suba el documento con el membrete de CNI. Cada empresa recibirá su propia copia con
+              las variables ya reemplazadas, conservando el formato original.
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            {datos.plantilla_nombre ? (
+              <div className="flex flex-wrap items-center justify-between gap-3 rounded-lg border border-emerald-200 bg-white px-4 py-3">
+                <span className="flex min-w-0 items-center gap-2">
+                  <FileText className="h-4 w-4 shrink-0 text-emerald-700" aria-hidden="true" />
+                  <span className="truncate text-sm font-medium">{datos.plantilla_nombre}</span>
+                  <Badge variant="secondary" className="bg-emerald-100 text-emerald-800">
+                    Se personaliza por empresa
+                  </Badge>
+                </span>
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => quitadoPlantilla.mutate()}
+                  disabled={quitadoPlantilla.isPending}
+                  className="text-muted-foreground hover:text-destructive"
+                >
+                  Quitar
+                </Button>
+              </div>
+            ) : (
+              <p className="text-sm text-muted-foreground">
+                Sin plantilla. Si no sube ninguna, la carta se enviará solo como texto del correo.
+              </p>
+            )}
+
+            <input
+              ref={referenciaPlantilla}
+              type="file"
+              accept=".docx"
+              className="hidden"
+              onChange={(evento) => {
+                const archivo = evento.target.files?.[0];
+                if (archivo) {
+                  subidaPlantilla.mutate(archivo);
+                }
+                evento.target.value = "";
+              }}
+            />
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => referenciaPlantilla.current?.click()}
+              disabled={subidaPlantilla.isPending}
+              className="mt-4"
+            >
+              {subidaPlantilla.isPending ? (
+                <Loader2 className="mr-2 h-4 w-4 animate-spin" aria-hidden="true" />
+              ) : (
+                <FileUp className="mr-2 h-4 w-4" aria-hidden="true" />
+              )}
+              {datos.plantilla_nombre ? "Reemplazar plantilla" : "Subir carta en Word"}
+            </Button>
+          </CardContent>
+        </Card>
+      )}
+
+      {esBorrador && !editando && (
         <Card>
           <CardHeader>
             <CardTitle className="text-base">Documentos adjuntos</CardTitle>
             <CardDescription>
-              Se enviarán junto con la carta a todas las empresas de la lista.
+              Archivos que se envían idénticos a todas las empresas, sin personalizar.
             </CardDescription>
           </CardHeader>
           <CardContent>
