@@ -18,6 +18,8 @@ type Config struct {
 	RemitenteCorreo       string
 	RemitenteNombre       string
 	ModoEnvio             string
+	RutaAlmacen           string
+	UrlPublicaArchivos    string
 	TiempoEsperaLectura   time.Duration
 	TiempoEsperaEscritura time.Duration
 }
@@ -43,13 +45,16 @@ func Cargar() (Config, error) {
 		RemitenteCorreo:       os.Getenv("REMITENTE_CORREO"),
 		RemitenteNombre:       obtenerTexto("REMITENTE_NOMBRE", "CNI"),
 		ModoEnvio:             obtenerTexto("MODO_ENVIO", ModoEnvioResend),
+		RutaAlmacen:           obtenerTexto("RUTA_ALMACEN", "almacen/adjuntos"),
+		UrlPublicaArchivos:    os.Getenv("URL_PUBLICA_ARCHIVOS"),
 		TiempoEsperaLectura:   15 * time.Second,
 		TiempoEsperaEscritura: 30 * time.Second,
 	}
 
 	requeridas := map[string]string{
-		"DATABASE_URL": cfg.DatabaseURL,
-		"JWT_SECRET":   cfg.JWTSecret,
+		"DATABASE_URL":         cfg.DatabaseURL,
+		"JWT_SECRET":           cfg.JWTSecret,
+		"URL_PUBLICA_ARCHIVOS": cfg.UrlPublicaArchivos,
 	}
 	for nombre, valor := range requeridas {
 		if valor == "" {
