@@ -5,22 +5,33 @@ import (
 	"errors"
 	"fmt"
 	"log/slog"
+	"path/filepath"
+	"strings"
 
 	"github.com/hibiken/asynq"
 	"golang.org/x/time/rate"
 
+	"github.com/Jose27luis/Correspondencia-CNI/backend/internal/contacts"
 	"github.com/Jose27luis/Correspondencia-CNI/backend/internal/correspondence"
 	"github.com/Jose27luis/Correspondencia-CNI/backend/internal/shared/mailer"
+	"github.com/Jose27luis/Correspondencia-CNI/backend/internal/shared/storage"
 )
 
 type Worker struct {
 	repositorio     *Repositorio
 	correspondencia *correspondence.Repositorio
 	proveedor       mailer.Proveedor
+	almacen         *storage.Almacen
 	limitador       *rate.Limiter
 }
 
-func NuevoWorker(repositorio *Repositorio, correspondencia *correspondence.Repositorio, proveedor mailer.Proveedor, porSegundo int) *Worker {
+func NuevoWorker(
+	repositorio *Repositorio,
+	correspondencia *correspondence.Repositorio,
+	proveedor mailer.Proveedor,
+	almacen *storage.Almacen,
+	porSegundo int,
+) *Worker {
 	if porSegundo <= 0 {
 		porSegundo = 1
 	}
@@ -29,6 +40,7 @@ func NuevoWorker(repositorio *Repositorio, correspondencia *correspondence.Repos
 		repositorio:     repositorio,
 		correspondencia: correspondencia,
 		proveedor:       proveedor,
+		almacen:         almacen,
 		limitador:       rate.NewLimiter(rate.Limit(porSegundo), porSegundo),
 	}
 }
@@ -65,12 +77,25 @@ func (w *Worker) procesarEnvio(ctx context.Context, tarea *asynq.Task) error {
 	asunto := correspondence.Renderizar(pieza.Asunto, contacto)
 	cuerpo := correspondence.Renderizar(pieza.Cuerpo, contacto)
 
-	adjuntos := make([]mailer.Adjunto, 0, len(pieza.Adjuntos))
+	adjuntos := make([]mailer.Adjunto, 0, len(pieza.Adjuntos)+1)
 	for _, adjunto := range pieza.Adjuntos {
 		adjuntos = append(adjuntos, mailer.Adjunto{
 			NombreArchivo: adjunto.NombreArchivo,
 			UrlArchivo:    adjunto.UrlArchivo,
 		})
+	}
+
+	if pieza.PlantillaURL != nil {
+		generado, err := w.generarDocumento(*pieza.PlantillaURL, pieza.PlantillaNombre, contacto)
+		if err != nil {
+			slog.Error("no se pudo generar el documento personalizado",
+				"envio_id", carga.EnvioID,
+				"error", err,
+			)
+			return err
+		}
+
+		adjuntos = append(adjuntos, generado)
 	}
 
 	if err := w.limitador.Wait(ctx); err != nil {
@@ -107,6 +132,53 @@ func (w *Worker) procesarEnvio(ctx context.Context, tarea *asynq.Task) error {
 	)
 
 	return nil
+}
+
+func (w *Worker) generarDocumento(
+	urlPlantilla string,
+	nombrePlantilla *string,
+	contacto contacts.Contacto,
+) (mailer.Adjunto, error) {
+	plantilla, err := w.almacen.Leer(urlPlantilla)
+	if err != nil {
+		return mailer.Adjunto{}, err
+	}
+
+	documento, err := correspondence.GenerarDocumento(plantilla, contacto)
+	if err != nil {
+		return mailer.Adjunto{}, err
+	}
+
+	return mailer.Adjunto{
+		NombreArchivo: nombreParaContacto(nombrePlantilla, contacto),
+		Contenido:     documento,
+	}, nil
+}
+
+func nombreParaContacto(nombrePlantilla *string, contacto contacts.Contacto) string {
+	base := "carta"
+	if nombrePlantilla != nil {
+		base = strings.TrimSuffix(*nombrePlantilla, filepath.Ext(*nombrePlantilla))
+	}
+
+	empresa := strings.Map(func(caracter rune) rune {
+		switch {
+		case caracter >= 'a' && caracter <= 'z', caracter >= 'A' && caracter <= 'Z':
+			return caracter
+		case caracter >= '0' && caracter <= '9':
+			return caracter
+		case caracter == ' ':
+			return '-'
+		default:
+			return -1
+		}
+	}, contacto.Empresa)
+
+	if empresa == "" {
+		return fmt.Sprintf("%s.docx", base)
+	}
+
+	return fmt.Sprintf("%s-%s.docx", base, empresa)
 }
 
 func esUltimoIntento(ctx context.Context) bool {
