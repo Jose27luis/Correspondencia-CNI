@@ -1,16 +1,12 @@
 package contacts
 
 import (
-	"encoding/json"
 	"errors"
 	"log/slog"
 	"net/http"
-	"strconv"
-	"strings"
 
 	"github.com/go-chi/chi/v5"
 	"github.com/go-playground/validator/v10"
-	"github.com/google/uuid"
 
 	"github.com/Jose27luis/Correspondencia-CNI/backend/internal/shared/httpx"
 )
@@ -38,13 +34,11 @@ func (h *Handler) Registrar(r chi.Router) {
 
 func (h *Handler) listar(w http.ResponseWriter, r *http.Request) {
 	filtro := FiltroListado{
-		Limite:  int32(leerEntero(r, "limite", limitePorDefecto)),
-		Desfase: int32(leerEntero(r, "desfase", 0)),
+		Limite:  int32(httpx.LeerEntero(r, "limite", limitePorDefecto)),
+		Desfase: int32(httpx.LeerEntero(r, "desfase", 0)),
 	}
 
-	if busqueda := strings.TrimSpace(r.URL.Query().Get("busqueda")); busqueda != "" {
-		filtro.Busqueda = &busqueda
-	}
+	filtro.Busqueda = httpx.LeerTexto(r, "busqueda")
 
 	listado, err := h.servicio.Listar(r.Context(), filtro)
 	if err != nil {
@@ -57,7 +51,7 @@ func (h *Handler) listar(w http.ResponseWriter, r *http.Request) {
 
 func (h *Handler) crear(w http.ResponseWriter, r *http.Request) {
 	var entrada EntradaContacto
-	if err := decodificar(r, &entrada); err != nil {
+	if err := httpx.Decodificar(w, r, &entrada); err != nil {
 		httpx.Error(w, http.StatusBadRequest, "el cuerpo de la petición no es válido")
 		return
 	}
@@ -72,7 +66,7 @@ func (h *Handler) crear(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h *Handler) obtener(w http.ResponseWriter, r *http.Request) {
-	id, err := leerID(r)
+	id, err := httpx.LeerID(r, "id")
 	if err != nil {
 		httpx.Error(w, http.StatusBadRequest, "identificador inválido")
 		return
@@ -88,14 +82,14 @@ func (h *Handler) obtener(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h *Handler) actualizar(w http.ResponseWriter, r *http.Request) {
-	id, err := leerID(r)
+	id, err := httpx.LeerID(r, "id")
 	if err != nil {
 		httpx.Error(w, http.StatusBadRequest, "identificador inválido")
 		return
 	}
 
 	var entrada EntradaContacto
-	if err := decodificar(r, &entrada); err != nil {
+	if err := httpx.Decodificar(w, r, &entrada); err != nil {
 		httpx.Error(w, http.StatusBadRequest, "el cuerpo de la petición no es válido")
 		return
 	}
@@ -110,7 +104,7 @@ func (h *Handler) actualizar(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h *Handler) eliminar(w http.ResponseWriter, r *http.Request) {
-	id, err := leerID(r)
+	id, err := httpx.LeerID(r, "id")
 	if err != nil {
 		httpx.Error(w, http.StatusBadRequest, "identificador inválido")
 		return
@@ -155,28 +149,6 @@ func (h *Handler) importar(w http.ResponseWriter, r *http.Request) {
 	httpx.JSON(w, http.StatusOK, resumen)
 }
 
-func decodificar[T any](r *http.Request, destino *T) error {
-	decodificador := json.NewDecoder(http.MaxBytesReader(nil, r.Body, 1<<20))
-	decodificador.DisallowUnknownFields()
-	return decodificador.Decode(destino)
-}
-
-func leerID(r *http.Request) (uuid.UUID, error) {
-	return uuid.Parse(chi.URLParam(r, "id"))
-}
-
-func leerEntero(r *http.Request, clave string, porDefecto int) int {
-	valor := r.URL.Query().Get(clave)
-	if valor == "" {
-		return porDefecto
-	}
-	numero, err := strconv.Atoi(valor)
-	if err != nil {
-		return porDefecto
-	}
-	return numero
-}
-
 func responderError(w http.ResponseWriter, err error) {
 	switch {
 	case errors.Is(err, ErrNoEncontrado):
@@ -186,18 +158,10 @@ func responderError(w http.ResponseWriter, err error) {
 	default:
 		var erroresValidacion validator.ValidationErrors
 		if errors.As(err, &erroresValidacion) {
-			httpx.ErrorConDetalle(w, http.StatusUnprocessableEntity, "datos inválidos", detallarValidacion(erroresValidacion))
+			httpx.ErrorConDetalle(w, http.StatusUnprocessableEntity, "datos inválidos", httpx.DetallarValidacion(erroresValidacion))
 			return
 		}
 		slog.Error("error no controlado en contactos", "error", err)
 		httpx.Error(w, http.StatusInternalServerError, "error interno del servidor")
 	}
-}
-
-func detallarValidacion(erroresValidacion validator.ValidationErrors) map[string]string {
-	detalle := make(map[string]string, len(erroresValidacion))
-	for _, errorCampo := range erroresValidacion {
-		detalle[strings.ToLower(errorCampo.Field())] = errorCampo.Tag()
-	}
-	return detalle
 }
