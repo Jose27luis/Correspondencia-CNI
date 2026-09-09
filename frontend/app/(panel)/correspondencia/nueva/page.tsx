@@ -1,7 +1,7 @@
 "use client";
 
 import { useMutation, useQuery } from "@tanstack/react-query";
-import { ArrowLeft, FileUp, Loader2 } from "lucide-react";
+import { ArrowLeft, FileUp, Loader2, Sparkles } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useRef, useState } from "react";
@@ -33,9 +33,38 @@ export default function PaginaNuevaCorrespondencia() {
   const [listaId, setListaId] = useState(SIN_LISTA);
   const [variablesDetectadas, setVariablesDetectadas] = useState<string[]>([]);
   const [documentoSinVariables, setDocumentoSinVariables] = useState(false);
+  const [instruccion, setInstruccion] = useState("");
   const referenciaWord = useRef<HTMLInputElement>(null);
 
   const listas = useQuery({ queryKey: ["listas"], queryFn: () => api.listarListas() });
+
+  const asistente = useQuery({
+    queryKey: ["asistente"],
+    queryFn: () => api.estadoAsistente(),
+    staleTime: Infinity,
+  });
+
+  const redaccion = useMutation({
+    mutationFn: (mejorar: boolean) =>
+      api.redactarConAsistente({
+        instruccion,
+        asunto: mejorar ? asunto : undefined,
+        cuerpo: mejorar ? cuerpo : undefined,
+        variables: variablesDisponibles,
+      }),
+    onSuccess: (borrador) => {
+      if (borrador.asunto) {
+        setAsunto(borrador.asunto);
+      }
+      setCuerpo(borrador.cuerpo);
+      toast.success("Borrador preparado", {
+        description: "Revíselo y ajústelo antes de guardarlo.",
+      });
+    },
+    onError: (fallo: unknown) => {
+      toast.error(fallo instanceof ErrorPeticion ? fallo.message : "No se pudo redactar el borrador");
+    },
+  });
 
   const lectura = useMutation({
     mutationFn: (archivo: File) => api.leerDocumento(archivo),
@@ -90,6 +119,64 @@ export default function PaginaNuevaCorrespondencia() {
           Redacte una vez y el sistema personalizará el texto para cada empresa.
         </p>
       </div>
+
+      {asistente.data?.disponible && (
+        <Card className="border-emerald-200 bg-emerald-50/40">
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2 text-base">
+              <Sparkles className="h-4 w-4 text-emerald-700" aria-hidden="true" />
+              Redactar con asistente
+            </CardTitle>
+            <CardDescription>
+              Describa la oferta en una o dos frases y el asistente preparará un borrador con el
+              tono comercial de CNI. Después puede editarlo libremente.
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-3">
+            <div className="space-y-1.5">
+              <Label htmlFor="instruccion">Qué quiere comunicar</Label>
+              <Textarea
+                id="instruccion"
+                rows={3}
+                value={instruccion}
+                onChange={(evento) => setInstruccion(evento.target.value)}
+              />
+            </div>
+
+            <div className="flex flex-wrap gap-2">
+              <Button
+                type="button"
+                onClick={() => redaccion.mutate(false)}
+                disabled={redaccion.isPending || instruccion.trim().length < 10}
+                className="text-white"
+              >
+                {redaccion.isPending ? (
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" aria-hidden="true" />
+                ) : (
+                  <Sparkles className="mr-2 h-4 w-4" aria-hidden="true" />
+                )}
+                Generar borrador
+              </Button>
+
+              {cuerpo.trim().length > 10 && (
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={() => redaccion.mutate(true)}
+                  disabled={redaccion.isPending}
+                >
+                  Mejorar lo que ya escribí
+                </Button>
+              )}
+            </div>
+
+            <p className="text-xs text-muted-foreground">
+              El asistente no inventa cifras ni plazos: si falta un dato, deja una variable para que
+              usted la complete. Revise siempre el resultado antes de enviar.
+            </p>
+          </CardContent>
+        </Card>
+      )}
 
       <Card className="border-dashed">
         <CardHeader>
