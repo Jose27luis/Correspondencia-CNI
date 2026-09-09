@@ -60,6 +60,8 @@ export interface Correspondencia {
   asunto: string;
   cuerpo: string;
   estado: EstadoCorrespondencia;
+  plantilla_url: string | null;
+  plantilla_nombre: string | null;
   adjuntos: Adjunto[];
   creado_en: string;
   actualizado_en: string;
