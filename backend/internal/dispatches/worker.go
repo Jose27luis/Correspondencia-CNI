@@ -8,6 +8,7 @@ import (
 	"path/filepath"
 	"strings"
 
+	"github.com/google/uuid"
 	"github.com/hibiken/asynq"
 	"golang.org/x/time/rate"
 
@@ -111,10 +112,11 @@ func (w *Worker) procesarEnvio(ctx context.Context, tarea *asynq.Task) error {
 	if err != nil {
 		slog.Error("no se pudo enviar el correo", "envio_id", carga.EnvioID, "correo", contacto.Correo, "error", err)
 
-		if tarea.ResultWriter() != nil && esUltimoIntento(ctx) {
+		if esUltimoIntento(ctx) {
 			if err := w.repositorio.MarcarFallido(ctx, carga.EnvioID); err != nil {
 				slog.Error("no se pudo marcar el envío como fallido", "envio_id", carga.EnvioID, "error", err)
 			}
+			w.cerrarSiTermino(ctx, correspondenciaID)
 		}
 
 		return err
@@ -124,6 +126,8 @@ func (w *Worker) procesarEnvio(ctx context.Context, tarea *asynq.Task) error {
 		return err
 	}
 
+	w.cerrarSiTermino(ctx, correspondenciaID)
+
 	slog.Info("correo entregado al proveedor",
 		"envio_id", carga.EnvioID,
 		"correo", contacto.Correo,
@@ -132,6 +136,24 @@ func (w *Worker) procesarEnvio(ctx context.Context, tarea *asynq.Task) error {
 	)
 
 	return nil
+}
+
+func (w *Worker) cerrarSiTermino(ctx context.Context, correspondenciaID uuid.UUID) {
+	estado, err := w.repositorio.CerrarSiTermino(ctx, correspondenciaID)
+	if err != nil {
+		slog.Error("no se pudo cerrar la correspondencia",
+			"correspondencia_id", correspondenciaID,
+			"error", err,
+		)
+		return
+	}
+
+	if estado != "" {
+		slog.Info("correspondencia completada",
+			"correspondencia_id", correspondenciaID,
+			"estado", estado,
+		)
+	}
 }
 
 func (w *Worker) generarDocumento(
