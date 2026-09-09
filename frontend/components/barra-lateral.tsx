@@ -1,7 +1,7 @@
 "use client";
 
 import { motion } from "framer-motion";
-import { FileText, LayoutDashboard, ListChecks, LogOut, Send, Users } from "lucide-react";
+import { FileText, LayoutDashboard, ListChecks, LogOut, Send, ShieldOff, Users } from "lucide-react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 
@@ -32,6 +32,7 @@ const secciones: Seccion[] = [
     enlaces: [
       { href: "/contactos", texto: "Contactos", icono: Users },
       { href: "/listas", texto: "Listas", icono: ListChecks },
+      { href: "/exclusiones", texto: "Excluidos", icono: ShieldOff },
     ],
   },
   {
