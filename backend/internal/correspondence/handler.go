@@ -11,7 +11,10 @@ import (
 
 	"github.com/Jose27luis/Correspondencia-CNI/backend/internal/shared/auth"
 	"github.com/Jose27luis/Correspondencia-CNI/backend/internal/shared/httpx"
+	"github.com/Jose27luis/Correspondencia-CNI/backend/internal/shared/storage"
 )
+
+const tamanoMaximoSubida = 25 << 20
 
 type Handler struct {
 	servicio *Servicio
@@ -141,13 +144,24 @@ func (h *Handler) agregarAdjunto(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	var entrada EntradaAdjunto
-	if err := httpx.Decodificar(w, r, &entrada); err != nil {
-		httpx.Error(w, http.StatusBadRequest, "el cuerpo de la petición no es válido")
+	if err := r.ParseMultipartForm(tamanoMaximoSubida); err != nil {
+		httpx.Error(w, http.StatusBadRequest, "no se pudo leer el archivo enviado")
 		return
 	}
 
-	adjunto, err := h.servicio.AgregarAdjunto(r.Context(), id, entrada)
+	archivo, cabecera, err := r.FormFile("archivo")
+	if err != nil {
+		httpx.Error(w, http.StatusBadRequest, "falta el archivo en el campo archivo")
+		return
+	}
+	defer archivo.Close()
+
+	if cabecera.Size > tamanoMaximoSubida {
+		httpx.Error(w, http.StatusRequestEntityTooLarge, "el archivo supera los 25 MB")
+		return
+	}
+
+	adjunto, err := h.servicio.SubirAdjunto(r.Context(), id, archivo, cabecera)
 	if err != nil {
 		responderError(w, err)
 		return
@@ -189,6 +203,10 @@ func responderError(w http.ResponseWriter, err error) {
 		httpx.Error(w, http.StatusUnprocessableEntity, "la lista indicada no existe")
 	case errors.Is(err, ErrSinDestinatario):
 		httpx.Error(w, http.StatusUnprocessableEntity, "la correspondencia necesita una lista con contactos para previsualizar")
+	case errors.Is(err, storage.ErrTipoNoPermitido):
+		httpx.Error(w, http.StatusUnsupportedMediaType, "solo se aceptan archivos PDF, Word, Excel o imágenes")
+	case errors.Is(err, storage.ErrArchivoVacio):
+		httpx.Error(w, http.StatusUnprocessableEntity, "el archivo está vacío")
 	case errors.Is(err, ErrLimiteAdjuntos):
 		httpx.Error(w, http.StatusRequestEntityTooLarge, "los adjuntos superan los 25 MB permitidos")
 	case errors.Is(err, auth.ErrSinToken):
