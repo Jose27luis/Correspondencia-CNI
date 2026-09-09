@@ -12,6 +12,7 @@ import (
 	"github.com/google/uuid"
 
 	"github.com/Jose27luis/Correspondencia-CNI/backend/internal/shared/auth"
+	"github.com/Jose27luis/Correspondencia-CNI/backend/internal/shared/mailer"
 	"github.com/Jose27luis/Correspondencia-CNI/backend/internal/shared/storage"
 )
 
@@ -24,13 +25,15 @@ const (
 type Servicio struct {
 	repositorio *Repositorio
 	almacen     *storage.Almacen
+	proveedor   mailer.Proveedor
 	validador   *validator.Validate
 }
 
-func NuevoServicio(repositorio *Repositorio, almacen *storage.Almacen) *Servicio {
+func NuevoServicio(repositorio *Repositorio, almacen *storage.Almacen, proveedor mailer.Proveedor) *Servicio {
 	return &Servicio{
 		repositorio: repositorio,
 		almacen:     almacen,
+		proveedor:   proveedor,
 		validador:   validator.New(validator.WithRequiredStructEnabled()),
 	}
 }
