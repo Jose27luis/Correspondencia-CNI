@@ -18,6 +18,16 @@ func (p *ProveedorBitacora) Nombre() string {
 	return "bitacora"
 }
 
+func contarGenerados(adjuntos []Adjunto) int {
+	total := 0
+	for _, adjunto := range adjuntos {
+		if len(adjunto.Contenido) > 0 {
+			total++
+		}
+	}
+	return total
+}
+
 func (p *ProveedorBitacora) Enviar(_ context.Context, mensaje Mensaje) (Resultado, error) {
 	mensajeID := uuid.NewString()
 
@@ -25,6 +35,7 @@ func (p *ProveedorBitacora) Enviar(_ context.Context, mensaje Mensaje) (Resultad
 		"para", mensaje.Para,
 		"asunto", mensaje.Asunto,
 		"adjuntos", len(mensaje.Adjuntos),
+		"generados", contarGenerados(mensaje.Adjuntos),
 		"mensaje_id", mensajeID,
 	)
 
