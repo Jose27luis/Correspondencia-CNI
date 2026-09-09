@@ -132,6 +132,21 @@ export const api = {
     return peticion<void>(`/correspondencia/${id}`, { metodo: "DELETE" });
   },
 
+  subirPlantilla(id: string, archivo: File): Promise<Correspondencia> {
+    const formulario = new FormData();
+    formulario.append("archivo", archivo);
+    return peticion<Correspondencia>(`/correspondencia/${id}/plantilla`, {
+      metodo: "POST",
+      formulario,
+    });
+  },
+
+  quitarPlantilla(id: string): Promise<Correspondencia> {
+    return peticion<Correspondencia>(`/correspondencia/${id}/plantilla`, {
+      metodo: "DELETE",
+    });
+  },
+
   subirAdjunto(id: string, archivo: File): Promise<Adjunto> {
     const formulario = new FormData();
     formulario.append("archivo", archivo);
