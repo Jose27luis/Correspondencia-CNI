@@ -20,6 +20,9 @@ type Config struct {
 	ModoEnvio             string
 	RutaAlmacen           string
 	UrlPublicaArchivos    string
+	UsuarioInicialNombre  string
+	UsuarioInicialCorreo  string
+	UsuarioInicialClave   string
 	TiempoEsperaLectura   time.Duration
 	TiempoEsperaEscritura time.Duration
 }
@@ -47,6 +50,9 @@ func Cargar() (Config, error) {
 		ModoEnvio:             obtenerTexto("MODO_ENVIO", ModoEnvioResend),
 		RutaAlmacen:           obtenerTexto("RUTA_ALMACEN", "almacen/adjuntos"),
 		UrlPublicaArchivos:    os.Getenv("URL_PUBLICA_ARCHIVOS"),
+		UsuarioInicialNombre:  obtenerTexto("USUARIO_INICIAL_NOMBRE", "Administrador"),
+		UsuarioInicialCorreo:  os.Getenv("USUARIO_INICIAL_CORREO"),
+		UsuarioInicialClave:   os.Getenv("USUARIO_INICIAL_CONTRASENA"),
 		TiempoEsperaLectura:   15 * time.Second,
 		TiempoEsperaEscritura: 30 * time.Second,
 	}
