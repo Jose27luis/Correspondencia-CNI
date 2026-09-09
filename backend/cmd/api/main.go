@@ -13,6 +13,7 @@ import (
 
 	"github.com/joho/godotenv"
 
+	"github.com/Jose27luis/Correspondencia-CNI/backend/internal/shared/auth"
 	"github.com/Jose27luis/Correspondencia-CNI/backend/internal/shared/config"
 	"github.com/Jose27luis/Correspondencia-CNI/backend/internal/shared/db"
 	"github.com/Jose27luis/Correspondencia-CNI/backend/internal/shared/server"
@@ -48,9 +49,14 @@ func ejecutar() error {
 	}
 	defer pool.Close()
 
+	manejador, err := server.NuevoRouter(pool, auth.NuevoEmisor(cfg.JWTSecret, auth.VigenciaDefecto))
+	if err != nil {
+		return err
+	}
+
 	srv := &http.Server{
 		Addr:         fmt.Sprintf(":%d", cfg.Puerto),
-		Handler:      server.NuevoRouter(pool),
+		Handler:      manejador,
 		ReadTimeout:  cfg.TiempoEsperaLectura,
 		WriteTimeout: cfg.TiempoEsperaEscritura,
 		IdleTimeout:  60 * time.Second,
