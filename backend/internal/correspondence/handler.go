@@ -34,6 +34,7 @@ func (h *Handler) Registrar(r chi.Router) {
 		rc.Delete("/{id}", h.eliminar)
 		rc.Post("/leer-documento", h.leerDocumento)
 		rc.Get("/{id}/previsualizacion", h.previsualizar)
+		rc.Post("/{id}/prueba", h.enviarPrueba)
 		rc.Post("/{id}/plantilla", h.subirPlantilla)
 		rc.Delete("/{id}/plantilla", h.quitarPlantilla)
 		rc.Post("/{id}/adjuntos", h.agregarAdjunto)
@@ -170,6 +171,22 @@ func (h *Handler) leerDocumento(w http.ResponseWriter, r *http.Request) {
 	}
 
 	httpx.JSON(w, http.StatusOK, contenido)
+}
+
+func (h *Handler) enviarPrueba(w http.ResponseWriter, r *http.Request) {
+	id, err := httpx.LeerID(r, "id")
+	if err != nil {
+		httpx.Error(w, http.StatusBadRequest, "identificador inválido")
+		return
+	}
+
+	resultado, err := h.servicio.EnviarPrueba(r.Context(), id)
+	if err != nil {
+		responderError(w, err)
+		return
+	}
+
+	httpx.JSON(w, http.StatusOK, resultado)
 }
 
 func (h *Handler) subirPlantilla(w http.ResponseWriter, r *http.Request) {
