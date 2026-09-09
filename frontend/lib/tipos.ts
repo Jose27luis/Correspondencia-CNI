@@ -79,6 +79,20 @@ export interface Previsualizacion {
   variables_sin_valor: string[];
 }
 
+export interface Supresion {
+  correo: string;
+  motivo: "rebote" | "baja" | "manual";
+  detalle: string | null;
+  creado_en: string;
+}
+
+export interface ResultadoPrueba {
+  destinatario: string;
+  asunto: string;
+  simulada: boolean;
+  variables_sin_valor: string[];
+}
+
 export interface Envio {
   id: string;
   estado: EstadoEnvio;
