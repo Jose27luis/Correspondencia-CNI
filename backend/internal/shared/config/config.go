@@ -17,11 +17,20 @@ type Config struct {
 	JWTSecret             string
 	RemitenteCorreo       string
 	RemitenteNombre       string
+	ModoEnvio             string
 	TiempoEsperaLectura   time.Duration
 	TiempoEsperaEscritura time.Duration
 }
 
-var ErrVariableFaltante = errors.New("variable de entorno requerida no definida")
+const (
+	ModoEnvioResend   = "resend"
+	ModoEnvioBitacora = "bitacora"
+)
+
+var (
+	ErrVariableFaltante  = errors.New("variable de entorno requerida no definida")
+	ErrModoEnvioInvalido = errors.New("MODO_ENVIO debe ser resend o bitacora")
+)
 
 func Cargar() (Config, error) {
 	cfg := Config{
@@ -33,6 +42,7 @@ func Cargar() (Config, error) {
 		JWTSecret:             os.Getenv("JWT_SECRET"),
 		RemitenteCorreo:       os.Getenv("REMITENTE_CORREO"),
 		RemitenteNombre:       obtenerTexto("REMITENTE_NOMBRE", "CNI"),
+		ModoEnvio:             obtenerTexto("MODO_ENVIO", ModoEnvioResend),
 		TiempoEsperaLectura:   15 * time.Second,
 		TiempoEsperaEscritura: 30 * time.Second,
 	}
@@ -45,6 +55,19 @@ func Cargar() (Config, error) {
 		if valor == "" {
 			return Config{}, fmt.Errorf("%w: %s", ErrVariableFaltante, nombre)
 		}
+	}
+
+	switch cfg.ModoEnvio {
+	case ModoEnvioResend:
+		if cfg.ResendAPIKey == "" {
+			return Config{}, fmt.Errorf("%w: %s", ErrVariableFaltante, "RESEND_API_KEY")
+		}
+		if cfg.RemitenteCorreo == "" {
+			return Config{}, fmt.Errorf("%w: %s", ErrVariableFaltante, "REMITENTE_CORREO")
+		}
+	case ModoEnvioBitacora:
+	default:
+		return Config{}, ErrModoEnvioInvalido
 	}
 
 	return cfg, nil
