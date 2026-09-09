@@ -4,9 +4,11 @@ import type {
   Borrador,
   Contacto,
   ContenidoWord,
+  CriteriosBusqueda,
   Correspondencia,
   Envio,
   EstadoAsistente,
+  Extraccion,
   Lista,
   Paginado,
   Previsualizacion,
@@ -122,6 +124,20 @@ export const api = {
     variables?: string[];
   }): Promise<Revision> {
     return peticion<Revision>("/asistente/revisar", { metodo: "POST", cuerpo: datos });
+  },
+
+  extraerContactos(texto: string): Promise<Extraccion> {
+    return peticion<Extraccion>("/asistente/contactos/extraer", {
+      metodo: "POST",
+      cuerpo: { texto },
+    });
+  },
+
+  interpretarBusqueda(consulta: string): Promise<CriteriosBusqueda> {
+    return peticion<CriteriosBusqueda>("/asistente/contactos/buscar", {
+      metodo: "POST",
+      cuerpo: { consulta },
+    });
   },
 
   leerDocumento(archivo: File): Promise<ContenidoWord> {
