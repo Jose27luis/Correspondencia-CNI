@@ -2,8 +2,17 @@
 INSERT INTO envio (correspondencia_id, contacto_id)
 SELECT $1, cl.contacto_id
 FROM contacto_lista cl
+JOIN contacto c ON c.id = cl.contacto_id
 WHERE cl.lista_id = $2
+  AND NOT EXISTS (SELECT 1 FROM supresion s WHERE s.correo = c.correo)
 ON CONFLICT (correspondencia_id, contacto_id) DO NOTHING;
+
+-- name: ContarSuprimidosDeLista :one
+SELECT count(*)
+FROM contacto_lista cl
+JOIN contacto c ON c.id = cl.contacto_id
+JOIN supresion s ON s.correo = c.correo
+WHERE cl.lista_id = $1;
 
 -- name: ListarEnviosPendientes :many
 SELECT e.id, e.correspondencia_id, e.contacto_id
