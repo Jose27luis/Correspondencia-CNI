@@ -3,6 +3,7 @@ package contacts
 import (
 	"context"
 	"encoding/csv"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"io"
@@ -136,13 +137,16 @@ type indicesCSV struct {
 	empresa int
 	correo  int
 	pais    int
+	extras  map[string]int
 }
 
 func mapearCabecera(cabecera []string) (indicesCSV, error) {
-	indices := indicesCSV{nombre: -1, empresa: -1, correo: -1, pais: -1}
+	indices := indicesCSV{nombre: -1, empresa: -1, correo: -1, pais: -1, extras: map[string]int{}}
 
 	for posicion, columna := range cabecera {
-		switch strings.ToLower(strings.TrimSpace(strings.TrimPrefix(columna, "\ufeff"))) {
+		nombreColumna := strings.ToLower(strings.TrimSpace(strings.TrimPrefix(columna, "\ufeff")))
+
+		switch nombreColumna {
 		case "nombre":
 			indices.nombre = posicion
 		case "empresa":
@@ -151,6 +155,10 @@ func mapearCabecera(cabecera []string) (indicesCSV, error) {
 			indices.correo = posicion
 		case "pais", "país":
 			indices.pais = posicion
+		default:
+			if clave := normalizarClave(nombreColumna); clave != "" {
+				indices.extras[clave] = posicion
+			}
 		}
 	}
 
@@ -159,6 +167,33 @@ func mapearCabecera(cabecera []string) (indicesCSV, error) {
 	}
 
 	return indices, nil
+}
+
+func normalizarClave(columna string) string {
+	var construida strings.Builder
+
+	for _, caracter := range columna {
+		switch {
+		case caracter >= 'a' && caracter <= 'z', caracter >= '0' && caracter <= '9':
+			construida.WriteRune(caracter)
+		case caracter == ' ', caracter == '-', caracter == '_':
+			construida.WriteRune('_')
+		case caracter == 'á':
+			construida.WriteRune('a')
+		case caracter == 'é':
+			construida.WriteRune('e')
+		case caracter == 'í':
+			construida.WriteRune('i')
+		case caracter == 'ó':
+			construida.WriteRune('o')
+		case caracter == 'ú':
+			construida.WriteRune('u')
+		case caracter == 'ñ':
+			construida.WriteRune('n')
+		}
+	}
+
+	return strings.Trim(construida.String(), "_")
 }
 
 func construirEntrada(fila []string, indices indicesCSV) (EntradaContacto, error) {
@@ -177,6 +212,22 @@ func construirEntrada(fila []string, indices indicesCSV) (EntradaContacto, error
 
 	if pais := valor(indices.pais); pais != "" {
 		entrada.Pais = &pais
+	}
+
+	if len(indices.extras) > 0 {
+		extras := make(map[string]string, len(indices.extras))
+		for clave, posicion := range indices.extras {
+			if contenido := strings.TrimSpace(valor(posicion)); contenido != "" {
+				extras[clave] = contenido
+			}
+		}
+
+		if len(extras) > 0 {
+			codificado, err := json.Marshal(extras)
+			if err == nil {
+				entrada.CamposExtra = codificado
+			}
+		}
 	}
 
 	entrada.Normalizar()
