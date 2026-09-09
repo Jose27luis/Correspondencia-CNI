@@ -32,6 +32,32 @@ func (q *Queries) ActualizarEstadoPorMensaje(ctx context.Context, arg Actualizar
 	return id, err
 }
 
+const cerrarCorrespondenciaSiTermino = `-- name: CerrarCorrespondenciaSiTermino :one
+UPDATE correspondencia c
+SET estado = CASE
+        WHEN NOT EXISTS (
+            SELECT 1 FROM envio e
+            WHERE e.correspondencia_id = c.id AND e.estado <> 'fallido'
+        ) THEN 'fallida'
+        ELSE 'enviada'
+    END,
+    actualizado_en = now()
+WHERE c.id = $1
+  AND c.estado IN ('encolada', 'enviando')
+  AND NOT EXISTS (
+      SELECT 1 FROM envio e
+      WHERE e.correspondencia_id = c.id AND e.estado = 'pendiente'
+  )
+RETURNING c.estado
+`
+
+func (q *Queries) CerrarCorrespondenciaSiTermino(ctx context.Context, id uuid.UUID) (string, error) {
+	row := q.db.QueryRow(ctx, cerrarCorrespondenciaSiTermino, id)
+	var estado string
+	err := row.Scan(&estado)
+	return estado, err
+}
+
 const contarEnviosDeCorrespondencia = `-- name: ContarEnviosDeCorrespondencia :one
 SELECT count(*) FROM envio
 WHERE correspondencia_id = $1
@@ -45,6 +71,18 @@ type ContarEnviosDeCorrespondenciaParams struct {
 
 func (q *Queries) ContarEnviosDeCorrespondencia(ctx context.Context, arg ContarEnviosDeCorrespondenciaParams) (int64, error) {
 	row := q.db.QueryRow(ctx, contarEnviosDeCorrespondencia, arg.CorrespondenciaID, arg.Estado)
+	var count int64
+	err := row.Scan(&count)
+	return count, err
+}
+
+const contarPendientesDeCorrespondencia = `-- name: ContarPendientesDeCorrespondencia :one
+SELECT count(*) FROM envio
+WHERE correspondencia_id = $1 AND estado = 'pendiente'
+`
+
+func (q *Queries) ContarPendientesDeCorrespondencia(ctx context.Context, correspondenciaID uuid.UUID) (int64, error) {
+	row := q.db.QueryRow(ctx, contarPendientesDeCorrespondencia, correspondenciaID)
 	var count int64
 	err := row.Scan(&count)
 	return count, err
