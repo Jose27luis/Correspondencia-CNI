@@ -1,5 +1,6 @@
 import { peticion } from "./api-client";
 import type {
+  Adjunto,
   Contacto,
   Correspondencia,
   Envio,
@@ -115,6 +116,21 @@ export const api = {
 
   eliminarCorrespondencia(id: string): Promise<void> {
     return peticion<void>(`/correspondencia/${id}`, { metodo: "DELETE" });
+  },
+
+  subirAdjunto(id: string, archivo: File): Promise<Adjunto> {
+    const formulario = new FormData();
+    formulario.append("archivo", archivo);
+    return peticion<Adjunto>(`/correspondencia/${id}/adjuntos`, {
+      metodo: "POST",
+      formulario,
+    });
+  },
+
+  eliminarAdjunto(id: string, adjuntoId: string): Promise<void> {
+    return peticion<void>(`/correspondencia/${id}/adjuntos/${adjuntoId}`, {
+      metodo: "DELETE",
+    });
   },
 
   previsualizar(id: string): Promise<Previsualizacion> {
