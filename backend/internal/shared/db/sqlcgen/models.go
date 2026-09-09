@@ -8,7 +8,6 @@ import (
 	"time"
 
 	"github.com/google/uuid"
-	"github.com/jackc/pgx/v5/pgtype"
 )
 
 type Adjunto struct {
@@ -32,21 +31,21 @@ type Contacto struct {
 	ActualizadoEn time.Time `json:"actualizado_en"`
 }
 
-type ContactoListum struct {
+type ContactoLista struct {
 	ContactoID uuid.UUID `json:"contacto_id"`
 	ListaID    uuid.UUID `json:"lista_id"`
 	AgregadoEn time.Time `json:"agregado_en"`
 }
 
-type Correspondencium struct {
-	ID            uuid.UUID   `json:"id"`
-	UsuarioID     uuid.UUID   `json:"usuario_id"`
-	ListaID       pgtype.UUID `json:"lista_id"`
-	Asunto        string      `json:"asunto"`
-	Cuerpo        string      `json:"cuerpo"`
-	Estado        string      `json:"estado"`
-	CreadoEn      time.Time   `json:"creado_en"`
-	ActualizadoEn time.Time   `json:"actualizado_en"`
+type Correspondencia struct {
+	ID            uuid.UUID  `json:"id"`
+	UsuarioID     uuid.UUID  `json:"usuario_id"`
+	ListaID       *uuid.UUID `json:"lista_id"`
+	Asunto        string     `json:"asunto"`
+	Cuerpo        string     `json:"cuerpo"`
+	Estado        string     `json:"estado"`
+	CreadoEn      time.Time  `json:"creado_en"`
+	ActualizadoEn time.Time  `json:"actualizado_en"`
 }
 
 type Envio struct {
