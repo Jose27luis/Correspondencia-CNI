@@ -9,7 +9,19 @@ import (
 	"github.com/Jose27luis/Correspondencia-CNI/backend/internal/contacts"
 )
 
-var patronVariable = regexp.MustCompile(`\{([a-zA-Z0-9_]{1,50})\}`)
+var patronVariable = regexp.MustCompile(`\{([a-zA-Z0-9_\- áéíóúÁÉÍÓÚñÑ]{1,60})\}|«([^»]{1,60})»`)
+
+var alias = map[string]string{
+	"nombres":            "nombre",
+	"nombre_contacto":    "nombre",
+	"contacto":           "nombre",
+	"razon_social":       "empresa",
+	"empresas":           "empresa",
+	"compania":           "empresa",
+	"email":              "correo",
+	"correo_electronico": "correo",
+	"paises":             "pais",
+}
 
 type Resultado struct {
 	Texto    string
@@ -21,7 +33,9 @@ func Variables(texto string) []string {
 
 	unicas := make(map[string]struct{}, len(encontradas))
 	for _, coincidencia := range encontradas {
-		unicas[strings.ToLower(coincidencia[1])] = struct{}{}
+		if nombre := nombreVariable(coincidencia); nombre != "" {
+			unicas[nombre] = struct{}{}
+		}
 	}
 
 	nombres := make([]string, 0, len(unicas))
@@ -38,7 +52,10 @@ func Renderizar(texto string, contacto contacts.Contacto) Resultado {
 	faltantes := make(map[string]struct{})
 
 	renderizado := patronVariable.ReplaceAllStringFunc(texto, func(coincidencia string) string {
-		nombre := strings.ToLower(strings.Trim(coincidencia, "{}"))
+		nombre := nombreVariable(patronVariable.FindStringSubmatch(coincidencia))
+		if nombre == "" {
+			return coincidencia
+		}
 
 		if valor, existe := valores[nombre]; existe && valor != "" {
 			return valor
@@ -57,6 +74,52 @@ func Renderizar(texto string, contacto contacts.Contacto) Resultado {
 	return Resultado{Texto: renderizado, SinValor: sinValor}
 }
 
+func nombreVariable(coincidencia []string) string {
+	if len(coincidencia) < 3 {
+		return ""
+	}
+
+	crudo := coincidencia[1]
+	if crudo == "" {
+		crudo = coincidencia[2]
+	}
+
+	return NormalizarNombreVariable(crudo)
+}
+
+func NormalizarNombreVariable(crudo string) string {
+	var construida strings.Builder
+
+	for _, caracter := range strings.ToLower(strings.TrimSpace(crudo)) {
+		switch {
+		case caracter >= 'a' && caracter <= 'z', caracter >= '0' && caracter <= '9':
+			construida.WriteRune(caracter)
+		case caracter == ' ', caracter == '-', caracter == '_':
+			construida.WriteRune('_')
+		case caracter == 'á':
+			construida.WriteRune('a')
+		case caracter == 'é':
+			construida.WriteRune('e')
+		case caracter == 'í':
+			construida.WriteRune('i')
+		case caracter == 'ó':
+			construida.WriteRune('o')
+		case caracter == 'ú':
+			construida.WriteRune('u')
+		case caracter == 'ñ':
+			construida.WriteRune('n')
+		}
+	}
+
+	nombre := strings.Trim(construida.String(), "_")
+
+	if equivalente, existe := alias[nombre]; existe {
+		return equivalente
+	}
+
+	return nombre
+}
+
 func valoresDeContacto(contacto contacts.Contacto) map[string]string {
 	valores := map[string]string{
 		"nombre":  contacto.Nombre,
@@ -72,7 +135,7 @@ func valoresDeContacto(contacto contacts.Contacto) map[string]string {
 		var extras map[string]json.RawMessage
 		if err := json.Unmarshal(contacto.CamposExtra, &extras); err == nil {
 			for clave, crudo := range extras {
-				valores[strings.ToLower(clave)] = textoDeValor(crudo)
+				valores[NormalizarNombreVariable(clave)] = textoDeValor(crudo)
 			}
 		}
 	}
