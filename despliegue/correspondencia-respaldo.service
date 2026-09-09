@@ -1,0 +1,9 @@
+[Unit]
+Description=Respaldo de la base de Correspondencia CNI
+
+[Service]
+Type=oneshot
+ExecStart=/var/www/Correspondencia-CNI/despliegue/respaldo.sh
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=correspondencia-respaldo
