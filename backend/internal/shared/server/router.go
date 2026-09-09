@@ -19,6 +19,7 @@ import (
 	"github.com/Jose27luis/Correspondencia-CNI/backend/internal/shared/config"
 	"github.com/Jose27luis/Correspondencia-CNI/backend/internal/shared/httpx"
 	"github.com/Jose27luis/Correspondencia-CNI/backend/internal/shared/middleware"
+	"github.com/Jose27luis/Correspondencia-CNI/backend/internal/shared/storage"
 	"github.com/Jose27luis/Correspondencia-CNI/backend/internal/users"
 	"github.com/Jose27luis/Correspondencia-CNI/backend/internal/webhooks"
 )
@@ -36,13 +37,18 @@ func NuevoRouter(pool *pgxpool.Pool, cfg config.Config, cliente *asynq.Client) (
 		return nil, err
 	}
 
+	almacen, err := storage.NuevoAlmacen(cfg.RutaAlmacen, cfg.UrlPublicaArchivos)
+	if err != nil {
+		return nil, err
+	}
+
 	repositorioCorrespondencia := correspondence.NuevoRepositorio(pool)
 	repositorioEnvios := dispatches.NuevoRepositorio(pool)
 
 	handlerUsuarios := users.NuevoHandler(servicioUsuarios)
 	handlerContactos := contacts.NuevoHandler(contacts.NuevoServicio(contacts.NuevoRepositorio(pool)))
 	handlerListas := lists.NuevoHandler(lists.NuevoServicio(lists.NuevoRepositorio(pool)))
-	handlerCorrespondencia := correspondence.NuevoHandler(correspondence.NuevoServicio(repositorioCorrespondencia))
+	handlerCorrespondencia := correspondence.NuevoHandler(correspondence.NuevoServicio(repositorioCorrespondencia, almacen))
 	handlerEnvios := dispatches.NuevoHandler(dispatches.NuevoServicio(repositorioEnvios, repositorioCorrespondencia, cliente))
 
 	r := chi.NewRouter()
