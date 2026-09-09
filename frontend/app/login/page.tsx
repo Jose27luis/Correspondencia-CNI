@@ -367,7 +367,7 @@ export default function PaginaLogin() {
                 <Button
                   type="submit"
                   disabled={isSubmitting}
-                  className="group relative w-full overflow-hidden bg-zinc-900 shadow-[0_1px_2px_rgba(16,24,40,0.12)] transition-all duration-300 hover:bg-zinc-800 hover:shadow-[0_8px_20px_-6px_rgba(16,24,40,0.45)] focus-visible:ring-4 focus-visible:ring-zinc-900/15 disabled:shadow-none"
+                  className="group relative w-full overflow-hidden bg-zinc-900 text-white shadow-[0_1px_2px_rgba(16,24,40,0.12)] transition-all duration-300 hover:bg-zinc-800 hover:text-white hover:shadow-[0_8px_20px_-6px_rgba(16,24,40,0.45)] focus-visible:ring-4 focus-visible:ring-zinc-900/15 disabled:shadow-none"
                 >
                   <span
                     aria-hidden="true"
