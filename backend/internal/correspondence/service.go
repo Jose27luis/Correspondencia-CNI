@@ -2,11 +2,14 @@ package correspondence
 
 import (
 	"context"
+	"log/slog"
+	"mime/multipart"
 
 	"github.com/go-playground/validator/v10"
 	"github.com/google/uuid"
 
 	"github.com/Jose27luis/Correspondencia-CNI/backend/internal/shared/auth"
+	"github.com/Jose27luis/Correspondencia-CNI/backend/internal/shared/storage"
 )
 
 const (
@@ -17,12 +20,14 @@ const (
 
 type Servicio struct {
 	repositorio *Repositorio
+	almacen     *storage.Almacen
 	validador   *validator.Validate
 }
 
-func NuevoServicio(repositorio *Repositorio) *Servicio {
+func NuevoServicio(repositorio *Repositorio, almacen *storage.Almacen) *Servicio {
 	return &Servicio{
 		repositorio: repositorio,
+		almacen:     almacen,
 		validador:   validator.New(validator.WithRequiredStructEnabled()),
 	}
 }
@@ -70,12 +75,7 @@ func (s *Servicio) Eliminar(ctx context.Context, id uuid.UUID) error {
 	return s.repositorio.Eliminar(ctx, id)
 }
 
-func (s *Servicio) AgregarAdjunto(ctx context.Context, correspondenciaID uuid.UUID, entrada EntradaAdjunto) (Adjunto, error) {
-	entrada.Normalizar()
-	if err := s.validador.Struct(entrada); err != nil {
-		return Adjunto{}, err
-	}
-
+func (s *Servicio) SubirAdjunto(ctx context.Context, correspondenciaID uuid.UUID, archivo multipart.File, cabecera *multipart.FileHeader) (Adjunto, error) {
 	correspondencia, err := s.repositorio.Obtener(ctx, correspondenciaID)
 	if err != nil {
 		return Adjunto{}, err
@@ -90,11 +90,29 @@ func (s *Servicio) AgregarAdjunto(ctx context.Context, correspondenciaID uuid.UU
 		return Adjunto{}, err
 	}
 
-	if acumulado+entrada.TamanoBytes > tamanoMaximoAdjuntos {
+	if acumulado+cabecera.Size > tamanoMaximoAdjuntos {
 		return Adjunto{}, ErrLimiteAdjuntos
 	}
 
-	return s.repositorio.CrearAdjunto(ctx, correspondenciaID, entrada)
+	guardado, err := s.almacen.Guardar(archivo, cabecera)
+	if err != nil {
+		return Adjunto{}, err
+	}
+
+	adjunto, err := s.repositorio.CrearAdjunto(ctx, correspondenciaID, EntradaAdjunto{
+		NombreArchivo: guardado.NombreArchivo,
+		UrlArchivo:    guardado.UrlArchivo,
+		Tipo:          guardado.Tipo,
+		TamanoBytes:   guardado.TamanoBytes,
+	})
+	if err != nil {
+		if errEliminar := s.almacen.Eliminar(guardado.UrlArchivo); errEliminar != nil {
+			slog.Error("quedó un archivo huérfano en el almacén", "url", guardado.UrlArchivo, "error", errEliminar)
+		}
+		return Adjunto{}, err
+	}
+
+	return adjunto, nil
 }
 
 func (s *Servicio) EliminarAdjunto(ctx context.Context, correspondenciaID uuid.UUID, adjuntoID uuid.UUID) error {
@@ -107,7 +125,25 @@ func (s *Servicio) EliminarAdjunto(ctx context.Context, correspondenciaID uuid.U
 		return ErrNoEsBorrador
 	}
 
-	return s.repositorio.EliminarAdjunto(ctx, correspondenciaID, adjuntoID)
+	var urlArchivo string
+	for _, adjunto := range correspondencia.Adjuntos {
+		if adjunto.ID == adjuntoID {
+			urlArchivo = adjunto.UrlArchivo
+			break
+		}
+	}
+
+	if err := s.repositorio.EliminarAdjunto(ctx, correspondenciaID, adjuntoID); err != nil {
+		return err
+	}
+
+	if urlArchivo != "" {
+		if err := s.almacen.Eliminar(urlArchivo); err != nil {
+			slog.Error("no se pudo borrar el archivo del almacén", "url", urlArchivo, "error", err)
+		}
+	}
+
+	return nil
 }
 
 func (s *Servicio) Previsualizar(ctx context.Context, id uuid.UUID) (Previsualizacion, error) {
