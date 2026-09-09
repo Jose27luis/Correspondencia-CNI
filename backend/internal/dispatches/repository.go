@@ -130,6 +130,17 @@ func (r *Repositorio) RegistrarEvento(ctx context.Context, envioID uuid.UUID, ti
 	return nil
 }
 
+func (r *Repositorio) CerrarSiTermino(ctx context.Context, correspondenciaID uuid.UUID) (string, error) {
+	estado, err := r.consultas.CerrarCorrespondenciaSiTermino(ctx, correspondenciaID)
+	if err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return "", nil
+		}
+		return "", fmt.Errorf("no se pudo cerrar la correspondencia: %w", err)
+	}
+	return estado, nil
+}
+
 func (r *Repositorio) Listar(ctx context.Context, correspondenciaID uuid.UUID, estado *string, limite int32, desfase int32) (ListadoEnvios, error) {
 	filas, err := r.consultas.ListarEnviosDeCorrespondencia(ctx, sqlcgen.ListarEnviosDeCorrespondenciaParams{
 		CorrespondenciaID: correspondenciaID,
