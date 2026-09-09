@@ -34,6 +34,8 @@ func (h *Handler) Registrar(r chi.Router) {
 		rc.Delete("/{id}", h.eliminar)
 		rc.Post("/leer-documento", h.leerDocumento)
 		rc.Get("/{id}/previsualizacion", h.previsualizar)
+		rc.Post("/{id}/plantilla", h.subirPlantilla)
+		rc.Delete("/{id}/plantilla", h.quitarPlantilla)
 		rc.Post("/{id}/adjuntos", h.agregarAdjunto)
 		rc.Delete("/{id}/adjuntos/{adjuntoId}", h.eliminarAdjunto)
 	})
@@ -170,6 +172,55 @@ func (h *Handler) leerDocumento(w http.ResponseWriter, r *http.Request) {
 	httpx.JSON(w, http.StatusOK, contenido)
 }
 
+func (h *Handler) subirPlantilla(w http.ResponseWriter, r *http.Request) {
+	id, err := httpx.LeerID(r, "id")
+	if err != nil {
+		httpx.Error(w, http.StatusBadRequest, "identificador inválido")
+		return
+	}
+
+	if err := r.ParseMultipartForm(tamanoMaximoSubida); err != nil {
+		httpx.Error(w, http.StatusBadRequest, "no se pudo leer el archivo enviado")
+		return
+	}
+
+	archivo, cabecera, err := r.FormFile("archivo")
+	if err != nil {
+		httpx.Error(w, http.StatusBadRequest, "falta el archivo en el campo archivo")
+		return
+	}
+	defer archivo.Close()
+
+	if !strings.HasSuffix(strings.ToLower(cabecera.Filename), ".docx") {
+		httpx.Error(w, http.StatusUnsupportedMediaType, "la plantilla debe ser un archivo .docx")
+		return
+	}
+
+	pieza, err := h.servicio.SubirPlantilla(r.Context(), id, archivo, cabecera)
+	if err != nil {
+		responderError(w, err)
+		return
+	}
+
+	httpx.JSON(w, http.StatusOK, pieza)
+}
+
+func (h *Handler) quitarPlantilla(w http.ResponseWriter, r *http.Request) {
+	id, err := httpx.LeerID(r, "id")
+	if err != nil {
+		httpx.Error(w, http.StatusBadRequest, "identificador inválido")
+		return
+	}
+
+	pieza, err := h.servicio.QuitarPlantilla(r.Context(), id)
+	if err != nil {
+		responderError(w, err)
+		return
+	}
+
+	httpx.JSON(w, http.StatusOK, pieza)
+}
+
 func (h *Handler) agregarAdjunto(w http.ResponseWriter, r *http.Request) {
 	id, err := httpx.LeerID(r, "id")
 	if err != nil {
@@ -240,6 +291,8 @@ func responderError(w http.ResponseWriter, err error) {
 		httpx.Error(w, http.StatusUnsupportedMediaType, "solo se aceptan archivos PDF, Word, Excel o imágenes")
 	case errors.Is(err, storage.ErrArchivoVacio):
 		httpx.Error(w, http.StatusUnprocessableEntity, "el archivo está vacío")
+	case errors.Is(err, ErrWordInvalido), errors.Is(err, ErrWordVacio):
+		httpx.Error(w, http.StatusUnprocessableEntity, err.Error())
 	case errors.Is(err, ErrLimiteAdjuntos):
 		httpx.Error(w, http.StatusRequestEntityTooLarge, "los adjuntos superan los 25 MB permitidos")
 	case errors.Is(err, auth.ErrSinToken):
