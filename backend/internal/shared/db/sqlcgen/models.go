@@ -77,6 +77,13 @@ type ListaContacto struct {
 	CreadoEn    time.Time `json:"creado_en"`
 }
 
+type Supresion struct {
+	Correo   string    `json:"correo"`
+	Motivo   string    `json:"motivo"`
+	Detalle  *string   `json:"detalle"`
+	CreadoEn time.Time `json:"creado_en"`
+}
+
 type Usuario struct {
 	ID           uuid.UUID `json:"id"`
 	Nombre       string    `json:"nombre"`

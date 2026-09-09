@@ -88,11 +88,28 @@ func (q *Queries) ContarPendientesDeCorrespondencia(ctx context.Context, corresp
 	return count, err
 }
 
+const contarSuprimidosDeLista = `-- name: ContarSuprimidosDeLista :one
+SELECT count(*)
+FROM contacto_lista cl
+JOIN contacto c ON c.id = cl.contacto_id
+JOIN supresion s ON s.correo = c.correo
+WHERE cl.lista_id = $1
+`
+
+func (q *Queries) ContarSuprimidosDeLista(ctx context.Context, listaID uuid.UUID) (int64, error) {
+	row := q.db.QueryRow(ctx, contarSuprimidosDeLista, listaID)
+	var count int64
+	err := row.Scan(&count)
+	return count, err
+}
+
 const crearEnviosDeLista = `-- name: CrearEnviosDeLista :execrows
 INSERT INTO envio (correspondencia_id, contacto_id)
 SELECT $1, cl.contacto_id
 FROM contacto_lista cl
+JOIN contacto c ON c.id = cl.contacto_id
 WHERE cl.lista_id = $2
+  AND NOT EXISTS (SELECT 1 FROM supresion s WHERE s.correo = c.correo)
 ON CONFLICT (correspondencia_id, contacto_id) DO NOTHING
 `
 
