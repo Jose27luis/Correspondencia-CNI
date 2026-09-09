@@ -1,7 +1,17 @@
 import type { ErrorApi } from "./tipos";
 
-const URL_BASE = process.env.NEXT_PUBLIC_API_URL ?? "http://127.0.0.1:8080/api";
+const URL_BASE = process.env.NEXT_PUBLIC_API_URL ?? "/api";
 const CLAVE_TOKEN = "correspondencia_cni_token";
+
+function construirUrl(ruta: string): URL {
+  const destino = `${URL_BASE}${ruta}`;
+
+  if (URL_BASE.startsWith("http://") || URL_BASE.startsWith("https://")) {
+    return new URL(destino);
+  }
+
+  return new URL(destino, window.location.origin);
+}
 
 export class ErrorPeticion extends Error {
   readonly codigo: number;
@@ -44,7 +54,7 @@ interface OpcionesPeticion {
 export async function peticion<T>(ruta: string, opciones: OpcionesPeticion = {}): Promise<T> {
   const { metodo = "GET", cuerpo, formulario, parametros } = opciones;
 
-  const url = new URL(`${URL_BASE}${ruta}`);
+  const url = construirUrl(ruta);
   if (parametros) {
     for (const [clave, valor] of Object.entries(parametros)) {
       if (valor !== undefined && valor !== "") {
