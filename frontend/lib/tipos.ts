@@ -115,6 +115,24 @@ export interface Revision {
   hallazgos: Hallazgo[];
 }
 
+export interface ContactoExtraido {
+  nombre: string;
+  empresa: string;
+  correo: string;
+  pais: string;
+  cargo: string;
+}
+
+export interface Extraccion {
+  contactos: ContactoExtraido[];
+  aviso: string;
+}
+
+export interface CriteriosBusqueda {
+  terminos: string[];
+  explicacion: string;
+}
+
 export interface Envio {
   id: string;
   estado: EstadoEnvio;
