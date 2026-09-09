@@ -72,6 +72,10 @@ func (e *EntradaContacto) Normalizar() {
 	}
 }
 
+func DesdeFila(fila sqlcgen.Contacto) Contacto {
+	return desdeFila(fila)
+}
+
 func desdeFila(fila sqlcgen.Contacto) Contacto {
 	return Contacto{
 		ID:            fila.ID,
