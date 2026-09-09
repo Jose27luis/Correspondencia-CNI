@@ -11,20 +11,22 @@ import (
 
 	"github.com/Jose27luis/Correspondencia-CNI/backend/internal/shared/auth"
 	"github.com/Jose27luis/Correspondencia-CNI/backend/internal/shared/httpx"
+	"github.com/Jose27luis/Correspondencia-CNI/backend/internal/shared/middleware"
 )
 
 type Handler struct {
-	servicio *Servicio
+	servicio  *Servicio
+	limitador *middleware.LimitadorIntentos
 }
 
-func NuevoHandler(servicio *Servicio) *Handler {
-	return &Handler{servicio: servicio}
+func NuevoHandler(servicio *Servicio, limitador *middleware.LimitadorIntentos) *Handler {
+	return &Handler{servicio: servicio, limitador: limitador}
 }
 
 func (h *Handler) RegistrarPublicas(r chi.Router) {
 	r.Route("/auth", func(ra chi.Router) {
-		ra.Post("/acceso", h.acceder)
-		ra.Post("/registro", h.registrar)
+		ra.With(h.limitador.Middleware).Post("/acceso", h.acceder)
+		ra.With(h.limitador.Middleware).Post("/registro", h.registrar)
 	})
 }
 
@@ -44,6 +46,8 @@ func (h *Handler) acceder(w http.ResponseWriter, r *http.Request) {
 		responderError(w, err)
 		return
 	}
+
+	h.limitador.Perdonar(r)
 
 	httpx.JSON(w, http.StatusOK, sesion)
 }
