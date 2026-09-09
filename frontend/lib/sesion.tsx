@@ -42,7 +42,7 @@ export function ProveedorSesion({ children }: { children: React.ReactNode }) {
       const sesion = await api.acceder(correo, contrasena);
       guardarToken(sesion.token);
       setUsuario(sesion.usuario);
-      router.push("/correspondencia");
+      router.push("/inicio");
     },
     [router],
   );

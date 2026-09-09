@@ -49,7 +49,7 @@ export default function PaginaLogin() {
 
   useEffect(() => {
     if (!cargando && usuario) {
-      router.replace("/correspondencia");
+      router.replace("/inicio");
     }
   }, [cargando, usuario, router]);
 
