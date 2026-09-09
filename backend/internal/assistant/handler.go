@@ -16,6 +16,7 @@ const (
 	longitudMinimaInstruccion = 10
 	longitudMaximaInstruccion = 2000
 	longitudMaximaCarta       = 100000
+	longitudMaximaTextoPegado = 40000
 )
 
 type Handler struct {
@@ -48,6 +49,8 @@ func (h *Handler) Registrar(r chi.Router) {
 		ra.Get("/estado", h.estado)
 		ra.Post("/redactar", h.redactar)
 		ra.Post("/revisar", h.revisar)
+		ra.Post("/contactos/extraer", h.extraerContactos)
+		ra.Post("/contactos/buscar", h.interpretarBusqueda)
 	})
 }
 
@@ -112,6 +115,70 @@ func (h *Handler) revisar(w http.ResponseWriter, r *http.Request) {
 	}
 
 	httpx.JSON(w, http.StatusOK, revision)
+}
+
+type PeticionExtraccion struct {
+	Texto string `json:"texto"`
+}
+
+type PeticionBusqueda struct {
+	Consulta string `json:"consulta"`
+}
+
+func (h *Handler) extraerContactos(w http.ResponseWriter, r *http.Request) {
+	var peticion PeticionExtraccion
+	if err := httpx.Decodificar(w, r, &peticion); err != nil {
+		httpx.Error(w, http.StatusBadRequest, "el cuerpo de la petición no es válido")
+		return
+	}
+
+	peticion.Texto = strings.TrimSpace(peticion.Texto)
+
+	if peticion.Texto == "" {
+		httpx.Error(w, http.StatusUnprocessableEntity, "pegue el texto del que quiere extraer contactos")
+		return
+	}
+
+	if len(peticion.Texto) > longitudMaximaTextoPegado {
+		httpx.Error(w, http.StatusRequestEntityTooLarge, "el texto pegado es demasiado largo")
+		return
+	}
+
+	extraccion, err := h.asistente.ExtraerContactos(r.Context(), peticion.Texto)
+	if err != nil {
+		responderError(w, err)
+		return
+	}
+
+	httpx.JSON(w, http.StatusOK, extraccion)
+}
+
+func (h *Handler) interpretarBusqueda(w http.ResponseWriter, r *http.Request) {
+	var peticion PeticionBusqueda
+	if err := httpx.Decodificar(w, r, &peticion); err != nil {
+		httpx.Error(w, http.StatusBadRequest, "el cuerpo de la petición no es válido")
+		return
+	}
+
+	peticion.Consulta = strings.TrimSpace(peticion.Consulta)
+
+	if peticion.Consulta == "" {
+		httpx.Error(w, http.StatusUnprocessableEntity, "escriba qué contactos está buscando")
+		return
+	}
+
+	if len(peticion.Consulta) > longitudMaximaInstruccion {
+		httpx.Error(w, http.StatusRequestEntityTooLarge, "la búsqueda es demasiado larga")
+		return
+	}
+
+	criterios, err := h.asistente.InterpretarBusqueda(r.Context(), peticion.Consulta)
+	if err != nil {
+		responderError(w, err)
+		return
+	}
+
+	httpx.JSON(w, http.StatusOK, criterios)
 }
 
 func responderError(w http.ResponseWriter, err error) {
