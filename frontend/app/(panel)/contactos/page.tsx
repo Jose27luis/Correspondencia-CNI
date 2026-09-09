@@ -1,7 +1,7 @@
 "use client";
 
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { Loader2, Plus, Search, Trash2, Upload } from "lucide-react";
+import { Download, Loader2, Plus, Search, Trash2, Upload } from "lucide-react";
 import { useRef, useState } from "react";
 import { toast } from "sonner";
 
@@ -147,6 +147,40 @@ export default function PaginaContactos() {
           </Button>
         </div>
       </div>
+
+      <Card className="border-dashed bg-white">
+        <CardContent className="flex flex-wrap items-start justify-between gap-4 p-5">
+          <div className="max-w-2xl space-y-2">
+            <p className="text-sm font-medium">Cómo preparar el archivo</p>
+            <p className="text-sm text-muted-foreground">
+              Guarde su Excel como CSV UTF-8. Solo son obligatorias tres columnas:{" "}
+              <code className="rounded bg-zinc-100 px-1 py-0.5 text-xs">nombre</code>,{" "}
+              <code className="rounded bg-zinc-100 px-1 py-0.5 text-xs">empresa</code> y{" "}
+              <code className="rounded bg-zinc-100 px-1 py-0.5 text-xs">correo</code>. El orden no
+              importa y puede usar <code className="rounded bg-zinc-100 px-1 py-0.5 text-xs">email</code>{" "}
+              en vez de correo.
+            </p>
+            <p className="text-sm text-muted-foreground">
+              Cualquier otra columna, como{" "}
+              <code className="rounded bg-zinc-100 px-1 py-0.5 text-xs">pais</code>,{" "}
+              <code className="rounded bg-zinc-100 px-1 py-0.5 text-xs">cargo</code> o{" "}
+              <code className="rounded bg-zinc-100 px-1 py-0.5 text-xs">ruc</code>, se guarda y queda
+              disponible como variable en las cartas, por ejemplo{" "}
+              <code className="rounded bg-zinc-100 px-1 py-0.5 text-xs">{"{cargo}"}</code>.
+            </p>
+            <p className="text-sm text-muted-foreground">
+              Si un correo ya existe, el contacto se actualiza en lugar de duplicarse.
+            </p>
+          </div>
+
+          <Button asChild variant="outline" size="sm">
+            <a href="/plantilla-contactos.csv" download>
+              <Download className="mr-2 h-4 w-4" aria-hidden="true" />
+              Descargar plantilla
+            </a>
+          </Button>
+        </CardContent>
+      </Card>
 
       <Card>
         <CardHeader className="pb-4">
