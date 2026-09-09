@@ -38,14 +38,16 @@ type ContactoLista struct {
 }
 
 type Correspondencia struct {
-	ID            uuid.UUID  `json:"id"`
-	UsuarioID     uuid.UUID  `json:"usuario_id"`
-	ListaID       *uuid.UUID `json:"lista_id"`
-	Asunto        string     `json:"asunto"`
-	Cuerpo        string     `json:"cuerpo"`
-	Estado        string     `json:"estado"`
-	CreadoEn      time.Time  `json:"creado_en"`
-	ActualizadoEn time.Time  `json:"actualizado_en"`
+	ID              uuid.UUID  `json:"id"`
+	UsuarioID       uuid.UUID  `json:"usuario_id"`
+	ListaID         *uuid.UUID `json:"lista_id"`
+	Asunto          string     `json:"asunto"`
+	Cuerpo          string     `json:"cuerpo"`
+	Estado          string     `json:"estado"`
+	CreadoEn        time.Time  `json:"creado_en"`
+	ActualizadoEn   time.Time  `json:"actualizado_en"`
+	PlantillaUrl    *string    `json:"plantilla_url"`
+	PlantillaNombre *string    `json:"plantilla_nombre"`
 }
 
 type Envio struct {

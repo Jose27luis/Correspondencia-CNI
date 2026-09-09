@@ -18,7 +18,7 @@ SET lista_id = $2,
     cuerpo = $4,
     actualizado_en = now()
 WHERE id = $1 AND estado = 'borrador'
-RETURNING id, usuario_id, lista_id, asunto, cuerpo, estado, creado_en, actualizado_en
+RETURNING id, usuario_id, lista_id, asunto, cuerpo, estado, creado_en, actualizado_en, plantilla_url, plantilla_nombre
 `
 
 type ActualizarCorrespondenciaParams struct {
@@ -45,6 +45,41 @@ func (q *Queries) ActualizarCorrespondencia(ctx context.Context, arg ActualizarC
 		&i.Estado,
 		&i.CreadoEn,
 		&i.ActualizadoEn,
+		&i.PlantillaUrl,
+		&i.PlantillaNombre,
+	)
+	return i, err
+}
+
+const asignarPlantilla = `-- name: AsignarPlantilla :one
+UPDATE correspondencia
+SET plantilla_url = $2,
+    plantilla_nombre = $3,
+    actualizado_en = now()
+WHERE id = $1 AND estado = 'borrador'
+RETURNING id, usuario_id, lista_id, asunto, cuerpo, estado, creado_en, actualizado_en, plantilla_url, plantilla_nombre
+`
+
+type AsignarPlantillaParams struct {
+	ID              uuid.UUID `json:"id"`
+	PlantillaUrl    *string   `json:"plantilla_url"`
+	PlantillaNombre *string   `json:"plantilla_nombre"`
+}
+
+func (q *Queries) AsignarPlantilla(ctx context.Context, arg AsignarPlantillaParams) (Correspondencia, error) {
+	row := q.db.QueryRow(ctx, asignarPlantilla, arg.ID, arg.PlantillaUrl, arg.PlantillaNombre)
+	var i Correspondencia
+	err := row.Scan(
+		&i.ID,
+		&i.UsuarioID,
+		&i.ListaID,
+		&i.Asunto,
+		&i.Cuerpo,
+		&i.Estado,
+		&i.CreadoEn,
+		&i.ActualizadoEn,
+		&i.PlantillaUrl,
+		&i.PlantillaNombre,
 	)
 	return i, err
 }
@@ -54,7 +89,7 @@ UPDATE correspondencia
 SET estado = $2,
     actualizado_en = now()
 WHERE id = $1
-RETURNING id, usuario_id, lista_id, asunto, cuerpo, estado, creado_en, actualizado_en
+RETURNING id, usuario_id, lista_id, asunto, cuerpo, estado, creado_en, actualizado_en, plantilla_url, plantilla_nombre
 `
 
 type CambiarEstadoCorrespondenciaParams struct {
@@ -74,6 +109,8 @@ func (q *Queries) CambiarEstadoCorrespondencia(ctx context.Context, arg CambiarE
 		&i.Estado,
 		&i.CreadoEn,
 		&i.ActualizadoEn,
+		&i.PlantillaUrl,
+		&i.PlantillaNombre,
 	)
 	return i, err
 }
@@ -128,7 +165,7 @@ func (q *Queries) CrearAdjunto(ctx context.Context, arg CrearAdjuntoParams) (Adj
 const crearCorrespondencia = `-- name: CrearCorrespondencia :one
 INSERT INTO correspondencia (usuario_id, lista_id, asunto, cuerpo)
 VALUES ($1, $2, $3, $4)
-RETURNING id, usuario_id, lista_id, asunto, cuerpo, estado, creado_en, actualizado_en
+RETURNING id, usuario_id, lista_id, asunto, cuerpo, estado, creado_en, actualizado_en, plantilla_url, plantilla_nombre
 `
 
 type CrearCorrespondenciaParams struct {
@@ -155,6 +192,8 @@ func (q *Queries) CrearCorrespondencia(ctx context.Context, arg CrearCorresponde
 		&i.Estado,
 		&i.CreadoEn,
 		&i.ActualizadoEn,
+		&i.PlantillaUrl,
+		&i.PlantillaNombre,
 	)
 	return i, err
 }
@@ -221,7 +260,7 @@ func (q *Queries) ListarAdjuntos(ctx context.Context, correspondenciaID uuid.UUI
 }
 
 const listarCorrespondencia = `-- name: ListarCorrespondencia :many
-SELECT id, usuario_id, lista_id, asunto, cuerpo, estado, creado_en, actualizado_en FROM correspondencia
+SELECT id, usuario_id, lista_id, asunto, cuerpo, estado, creado_en, actualizado_en, plantilla_url, plantilla_nombre FROM correspondencia
 WHERE ($3::text IS NULL OR estado = $3::text)
 ORDER BY creado_en DESC
 LIMIT $1 OFFSET $2
@@ -251,6 +290,8 @@ func (q *Queries) ListarCorrespondencia(ctx context.Context, arg ListarCorrespon
 			&i.Estado,
 			&i.CreadoEn,
 			&i.ActualizadoEn,
+			&i.PlantillaUrl,
+			&i.PlantillaNombre,
 		); err != nil {
 			return nil, err
 		}
@@ -287,7 +328,7 @@ func (q *Queries) ObtenerAdjunto(ctx context.Context, arg ObtenerAdjuntoParams) 
 }
 
 const obtenerCorrespondencia = `-- name: ObtenerCorrespondencia :one
-SELECT id, usuario_id, lista_id, asunto, cuerpo, estado, creado_en, actualizado_en FROM correspondencia WHERE id = $1
+SELECT id, usuario_id, lista_id, asunto, cuerpo, estado, creado_en, actualizado_en, plantilla_url, plantilla_nombre FROM correspondencia WHERE id = $1
 `
 
 func (q *Queries) ObtenerCorrespondencia(ctx context.Context, id uuid.UUID) (Correspondencia, error) {
@@ -302,6 +343,8 @@ func (q *Queries) ObtenerCorrespondencia(ctx context.Context, id uuid.UUID) (Cor
 		&i.Estado,
 		&i.CreadoEn,
 		&i.ActualizadoEn,
+		&i.PlantillaUrl,
+		&i.PlantillaNombre,
 	)
 	return i, err
 }
