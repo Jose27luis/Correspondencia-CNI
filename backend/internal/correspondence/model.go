@@ -28,15 +28,17 @@ var (
 )
 
 type Correspondencia struct {
-	ID            uuid.UUID  `json:"id"`
-	UsuarioID     uuid.UUID  `json:"usuario_id"`
-	ListaID       *uuid.UUID `json:"lista_id"`
-	Asunto        string     `json:"asunto"`
-	Cuerpo        string     `json:"cuerpo"`
-	Estado        string     `json:"estado"`
-	Adjuntos      []Adjunto  `json:"adjuntos"`
-	CreadoEn      time.Time  `json:"creado_en"`
-	ActualizadoEn time.Time  `json:"actualizado_en"`
+	ID              uuid.UUID  `json:"id"`
+	UsuarioID       uuid.UUID  `json:"usuario_id"`
+	ListaID         *uuid.UUID `json:"lista_id"`
+	Asunto          string     `json:"asunto"`
+	Cuerpo          string     `json:"cuerpo"`
+	Estado          string     `json:"estado"`
+	PlantillaURL    *string    `json:"plantilla_url"`
+	PlantillaNombre *string    `json:"plantilla_nombre"`
+	Adjuntos        []Adjunto  `json:"adjuntos"`
+	CreadoEn        time.Time  `json:"creado_en"`
+	ActualizadoEn   time.Time  `json:"actualizado_en"`
 }
 
 type Adjunto struct {
@@ -86,15 +88,17 @@ func (e *EntradaAdjunto) Normalizar() {
 
 func desdeFila(fila sqlcgen.Correspondencia, adjuntos []Adjunto) Correspondencia {
 	return Correspondencia{
-		ID:            fila.ID,
-		UsuarioID:     fila.UsuarioID,
-		ListaID:       fila.ListaID,
-		Asunto:        fila.Asunto,
-		Cuerpo:        fila.Cuerpo,
-		Estado:        fila.Estado,
-		Adjuntos:      adjuntos,
-		CreadoEn:      fila.CreadoEn,
-		ActualizadoEn: fila.ActualizadoEn,
+		ID:              fila.ID,
+		UsuarioID:       fila.UsuarioID,
+		ListaID:         fila.ListaID,
+		Asunto:          fila.Asunto,
+		Cuerpo:          fila.Cuerpo,
+		Estado:          fila.Estado,
+		PlantillaURL:    fila.PlantillaUrl,
+		PlantillaNombre: fila.PlantillaNombre,
+		Adjuntos:        adjuntos,
+		CreadoEn:        fila.CreadoEn,
+		ActualizadoEn:   fila.ActualizadoEn,
 	}
 }
 
