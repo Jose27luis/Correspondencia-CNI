@@ -1,7 +1,10 @@
 package correspondence
 
 import (
+	"bytes"
 	"context"
+	"fmt"
+	"io"
 	"log/slog"
 	"mime/multipart"
 
@@ -113,6 +116,80 @@ func (s *Servicio) SubirAdjunto(ctx context.Context, correspondenciaID uuid.UUID
 	}
 
 	return adjunto, nil
+}
+
+func (s *Servicio) SubirPlantilla(ctx context.Context, correspondenciaID uuid.UUID, archivo multipart.File, cabecera *multipart.FileHeader) (Correspondencia, error) {
+	pieza, err := s.repositorio.Obtener(ctx, correspondenciaID)
+	if err != nil {
+		return Correspondencia{}, err
+	}
+
+	if pieza.Estado != EstadoBorrador {
+		return Correspondencia{}, ErrNoEsBorrador
+	}
+
+	contenido, err := io.ReadAll(io.LimitReader(archivo, tamanoMaximoWord))
+	if err != nil {
+		return Correspondencia{}, fmt.Errorf("no se pudo leer el documento: %w", err)
+	}
+
+	if _, err := LeerWord(bytes.NewReader(contenido), int64(len(contenido))); err != nil {
+		return Correspondencia{}, err
+	}
+
+	if _, err := archivo.Seek(0, io.SeekStart); err != nil {
+		return Correspondencia{}, fmt.Errorf("no se pudo procesar el documento: %w", err)
+	}
+
+	guardado, err := s.almacen.Guardar(archivo, cabecera)
+	if err != nil {
+		return Correspondencia{}, err
+	}
+
+	actualizada, err := s.repositorio.AsignarPlantilla(
+		ctx,
+		correspondenciaID,
+		&guardado.UrlArchivo,
+		&guardado.NombreArchivo,
+	)
+	if err != nil {
+		if errEliminar := s.almacen.Eliminar(guardado.UrlArchivo); errEliminar != nil {
+			slog.Error("quedó una plantilla huérfana", "url", guardado.UrlArchivo, "error", errEliminar)
+		}
+		return Correspondencia{}, err
+	}
+
+	if pieza.PlantillaURL != nil {
+		if err := s.almacen.Eliminar(*pieza.PlantillaURL); err != nil {
+			slog.Error("no se pudo borrar la plantilla anterior", "error", err)
+		}
+	}
+
+	return actualizada, nil
+}
+
+func (s *Servicio) QuitarPlantilla(ctx context.Context, correspondenciaID uuid.UUID) (Correspondencia, error) {
+	pieza, err := s.repositorio.Obtener(ctx, correspondenciaID)
+	if err != nil {
+		return Correspondencia{}, err
+	}
+
+	if pieza.Estado != EstadoBorrador {
+		return Correspondencia{}, ErrNoEsBorrador
+	}
+
+	actualizada, err := s.repositorio.AsignarPlantilla(ctx, correspondenciaID, nil, nil)
+	if err != nil {
+		return Correspondencia{}, err
+	}
+
+	if pieza.PlantillaURL != nil {
+		if err := s.almacen.Eliminar(*pieza.PlantillaURL); err != nil {
+			slog.Error("no se pudo borrar la plantilla", "error", err)
+		}
+	}
+
+	return actualizada, nil
 }
 
 func (s *Servicio) EliminarAdjunto(ctx context.Context, correspondenciaID uuid.UUID, adjuntoID uuid.UUID) error {
