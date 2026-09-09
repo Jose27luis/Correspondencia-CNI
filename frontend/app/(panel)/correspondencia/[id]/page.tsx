@@ -2,7 +2,7 @@
 
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useParams } from "next/navigation";
-import { useState } from "react";
+import { useRef, useState } from "react";
 
 import { api } from "@/lib/api";
 import { ErrorPeticion } from "@/lib/api-client";
@@ -30,6 +30,7 @@ export default function PaginaDetalleCorrespondencia() {
   const clienteConsultas = useQueryClient();
   const [error, setError] = useState<string | null>(null);
   const [confirmando, setConfirmando] = useState(false);
+  const referenciaArchivo = useRef<HTMLInputElement>(null);
 
   const pieza = useQuery({
     queryKey: ["correspondencia", id],
@@ -57,6 +58,24 @@ export default function PaginaDetalleCorrespondencia() {
     queryFn: () => api.listarEnvios(id),
     enabled: pieza.data !== undefined && !esBorrador,
     refetchInterval: pieza.data && !esBorrador ? 5000 : false,
+  });
+
+  const subida = useMutation({
+    mutationFn: (archivo: File) => api.subirAdjunto(id, archivo),
+    onSuccess: () => {
+      setError(null);
+      void clienteConsultas.invalidateQueries({ queryKey: ["correspondencia", id] });
+    },
+    onError: (fallo: unknown) => {
+      setError(fallo instanceof ErrorPeticion ? fallo.message : "No se pudo subir el archivo");
+    },
+  });
+
+  const borradoAdjunto = useMutation({
+    mutationFn: (adjuntoId: string) => api.eliminarAdjunto(id, adjuntoId),
+    onSuccess: () => {
+      void clienteConsultas.invalidateQueries({ queryKey: ["correspondencia", id] });
+    },
   });
 
   const envio = useMutation({
@@ -133,6 +152,57 @@ export default function PaginaDetalleCorrespondencia() {
         <p className="rounded bg-amber-50 px-3 py-2 text-sm text-amber-800">
           Estas variables quedarían sin reemplazar: {variablesSinValor.join(", ")}
         </p>
+      )}
+
+      {esBorrador && (
+        <div className="rounded border border-slate-200 bg-white p-6">
+          <h2 className="text-sm font-medium">Documentos adjuntos</h2>
+
+          <ul className="mt-3 divide-y divide-slate-100">
+            {pieza.data.adjuntos.map((adjunto) => (
+              <li key={adjunto.id} className="flex items-center justify-between py-2 text-sm">
+                <span>
+                  {adjunto.nombre_archivo}
+                  <span className="ml-2 text-xs text-slate-500">
+                    {Math.round(adjunto.tamano_bytes / 1024)} KB
+                  </span>
+                </span>
+                <button
+                  type="button"
+                  onClick={() => borradoAdjunto.mutate(adjunto.id)}
+                  className="text-xs text-red-600 hover:underline"
+                >
+                  Quitar
+                </button>
+              </li>
+            ))}
+            {pieza.data.adjuntos.length === 0 && (
+              <li className="py-2 text-sm text-slate-500">Sin documentos adjuntos</li>
+            )}
+          </ul>
+
+          <input
+            ref={referenciaArchivo}
+            type="file"
+            accept=".pdf,.doc,.docx,.xls,.xlsx,.png,.jpg,.jpeg"
+            className="hidden"
+            onChange={(evento) => {
+              const archivo = evento.target.files?.[0];
+              if (archivo) {
+                subida.mutate(archivo);
+              }
+              evento.target.value = "";
+            }}
+          />
+          <button
+            type="button"
+            onClick={() => referenciaArchivo.current?.click()}
+            disabled={subida.isPending}
+            className="mt-4 rounded border border-slate-300 px-4 py-2 text-sm disabled:opacity-60"
+          >
+            {subida.isPending ? "Subiendo" : "Adjuntar documento"}
+          </button>
+        </div>
       )}
 
       {previsualizacion.data && (
