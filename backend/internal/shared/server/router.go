@@ -11,10 +11,12 @@ import (
 	"github.com/hibiken/asynq"
 	"github.com/jackc/pgx/v5/pgxpool"
 
+	"github.com/Jose27luis/Correspondencia-CNI/backend/internal/assistant"
 	"github.com/Jose27luis/Correspondencia-CNI/backend/internal/contacts"
 	"github.com/Jose27luis/Correspondencia-CNI/backend/internal/correspondence"
 	"github.com/Jose27luis/Correspondencia-CNI/backend/internal/dispatches"
 	"github.com/Jose27luis/Correspondencia-CNI/backend/internal/lists"
+	"github.com/Jose27luis/Correspondencia-CNI/backend/internal/shared/ai"
 	"github.com/Jose27luis/Correspondencia-CNI/backend/internal/shared/auth"
 	"github.com/Jose27luis/Correspondencia-CNI/backend/internal/shared/config"
 	"github.com/Jose27luis/Correspondencia-CNI/backend/internal/shared/httpx"
@@ -63,6 +65,12 @@ func NuevoRouter(ctx context.Context, pool *pgxpool.Pool, cfg config.Config, cli
 	servicioExclusiones := suppression.NuevoServicio(repositorioExclusiones, cfg.JWTSecret, cfg.UrlPanel)
 	handlerExclusiones := suppression.NuevoHandler(servicioExclusiones)
 
+	asistente := ai.NuevoAsistente(cfg.AnthropicAPIKey)
+	if !asistente.Disponible() {
+		slog.Warn("el asistente de redacción queda deshabilitado", "motivo", "falta ANTHROPIC_API_KEY")
+	}
+	handlerAsistente := assistant.NuevoHandler(asistente)
+
 	handlerUsuarios := users.NuevoHandler(servicioUsuarios, middleware.NuevoLimitadorIntentos())
 	handlerContactos := contacts.NuevoHandler(contacts.NuevoServicio(contacts.NuevoRepositorio(pool)))
 	handlerListas := lists.NuevoHandler(lists.NuevoServicio(lists.NuevoRepositorio(pool)))
@@ -93,6 +101,7 @@ func NuevoRouter(ctx context.Context, pool *pgxpool.Pool, cfg config.Config, cli
 			handlerCorrespondencia.Registrar(protegidas)
 			handlerEnvios.Registrar(protegidas)
 			handlerExclusiones.RegistrarProtegidas(protegidas)
+			handlerAsistente.Registrar(protegidas)
 		})
 	})
 
