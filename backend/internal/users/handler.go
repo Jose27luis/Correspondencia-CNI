@@ -1,7 +1,6 @@
 package users
 
 import (
-	"encoding/json"
 	"errors"
 	"log/slog"
 	"net/http"
@@ -35,7 +34,7 @@ func (h *Handler) RegistrarProtegidas(r chi.Router) {
 
 func (h *Handler) acceder(w http.ResponseWriter, r *http.Request) {
 	var entrada EntradaAcceso
-	if err := decodificar(r, &entrada); err != nil {
+	if err := httpx.Decodificar(w, r, &entrada); err != nil {
 		httpx.Error(w, http.StatusBadRequest, "el cuerpo de la petición no es válido")
 		return
 	}
@@ -51,7 +50,7 @@ func (h *Handler) acceder(w http.ResponseWriter, r *http.Request) {
 
 func (h *Handler) registrar(w http.ResponseWriter, r *http.Request) {
 	var entrada EntradaRegistro
-	if err := decodificar(r, &entrada); err != nil {
+	if err := httpx.Decodificar(w, r, &entrada); err != nil {
 		httpx.Error(w, http.StatusBadRequest, "el cuerpo de la petición no es válido")
 		return
 	}
@@ -82,12 +81,6 @@ func (h *Handler) perfil(w http.ResponseWriter, r *http.Request) {
 	httpx.JSON(w, http.StatusOK, usuario)
 }
 
-func decodificar[T any](r *http.Request, destino *T) error {
-	decodificador := json.NewDecoder(http.MaxBytesReader(nil, r.Body, 1<<20))
-	decodificador.DisallowUnknownFields()
-	return decodificador.Decode(destino)
-}
-
 func responderError(w http.ResponseWriter, err error) {
 	switch {
 	case errors.Is(err, ErrCredencialesInvalidas):
@@ -103,18 +96,10 @@ func responderError(w http.ResponseWriter, err error) {
 	default:
 		var erroresValidacion validator.ValidationErrors
 		if errors.As(err, &erroresValidacion) {
-			httpx.ErrorConDetalle(w, http.StatusUnprocessableEntity, "datos inválidos", detallarValidacion(erroresValidacion))
+			httpx.ErrorConDetalle(w, http.StatusUnprocessableEntity, "datos inválidos", httpx.DetallarValidacion(erroresValidacion))
 			return
 		}
 		slog.Error("error no controlado en usuarios", "error", err)
 		httpx.Error(w, http.StatusInternalServerError, "error interno del servidor")
 	}
-}
-
-func detallarValidacion(erroresValidacion validator.ValidationErrors) map[string]string {
-	detalle := make(map[string]string, len(erroresValidacion))
-	for _, errorCampo := range erroresValidacion {
-		detalle[strings.ToLower(errorCampo.Field())] = errorCampo.Tag()
-	}
-	return detalle
 }
