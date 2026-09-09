@@ -21,6 +21,7 @@ type Config struct {
 	RutaAlmacen           string
 	UrlPublicaArchivos    string
 	UrlPanel              string
+	AnthropicAPIKey       string
 	UsuarioInicialCorreo  string
 	UsuarioInicialClave   string
 	TiempoEsperaLectura   time.Duration
@@ -51,6 +52,7 @@ func Cargar() (Config, error) {
 		RutaAlmacen:           obtenerTexto("RUTA_ALMACEN", "almacen/adjuntos"),
 		UrlPublicaArchivos:    os.Getenv("URL_PUBLICA_ARCHIVOS"),
 		UrlPanel:              obtenerTexto("URL_PANEL", "https://correspondencia.tendero.pe"),
+		AnthropicAPIKey:       os.Getenv("ANTHROPIC_API_KEY"),
 		UsuarioInicialCorreo:  os.Getenv("USUARIO_INICIAL_CORREO"),
 		UsuarioInicialClave:   os.Getenv("USUARIO_INICIAL_CONTRASENA"),
 		TiempoEsperaLectura:   15 * time.Second,
