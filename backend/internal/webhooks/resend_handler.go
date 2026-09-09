@@ -13,6 +13,7 @@ import (
 
 	"github.com/Jose27luis/Correspondencia-CNI/backend/internal/dispatches"
 	"github.com/Jose27luis/Correspondencia-CNI/backend/internal/shared/httpx"
+	"github.com/Jose27luis/Correspondencia-CNI/backend/internal/suppression"
 )
 
 const tamanoMaximoCuerpo = 1 << 20
@@ -41,10 +42,15 @@ type datosEvento struct {
 type Handler struct {
 	verificador *Verificador
 	repositorio *dispatches.Repositorio
+	exclusiones *suppression.Repositorio
 }
 
-func NuevoHandler(verificador *Verificador, repositorio *dispatches.Repositorio) *Handler {
-	return &Handler{verificador: verificador, repositorio: repositorio}
+func NuevoHandler(
+	verificador *Verificador,
+	repositorio *dispatches.Repositorio,
+	exclusiones *suppression.Repositorio,
+) *Handler {
+	return &Handler{verificador: verificador, repositorio: repositorio, exclusiones: exclusiones}
 }
 
 func (h *Handler) Registrar(r chi.Router) {
@@ -111,6 +117,19 @@ func (h *Handler) registrar(r *http.Request, evento eventoResend, estado string,
 
 	if err != nil {
 		return err
+	}
+
+	if estado == dispatches.EstadoRebotado {
+		if err := h.exclusiones.SuprimirPorEnvio(
+			ctx,
+			envioID,
+			suppression.MotivoRebote,
+			evento.Tipo,
+		); err != nil {
+			slog.Error("no se pudo excluir el correo rebotado", "envio_id", envioID, "error", err)
+		} else {
+			slog.Info("correo excluido por rebote", "envio_id", envioID, "tipo", evento.Tipo)
+		}
 	}
 
 	fecha := evento.CreadoEn
