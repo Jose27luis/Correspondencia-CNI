@@ -97,10 +97,51 @@ func TestVariablesDevuelveNombresUnicosOrdenados(t *testing.T) {
 	}
 }
 
-func TestVariablesIgnoraLlavesSinNombreValido(t *testing.T) {
-	nombres := Variables("{} {con-guion} {espacio libre} {ok}")
+func TestVariablesAceptaNombresConEspaciosYGuiones(t *testing.T) {
+	nombres := Variables("{razon social} {con-guion} {ok}")
 
-	if !reflect.DeepEqual(nombres, []string{"ok"}) {
-		t.Fatalf("se esperaba [ok] y se obtuvo %v", nombres)
+	if !reflect.DeepEqual(nombres, []string{"con_guion", "empresa", "ok"}) {
+		t.Fatalf("se esperaba [con_guion empresa ok] y se obtuvo %v", nombres)
+	}
+}
+
+func TestRenderizarReemplazaCamposDeCombinacionDeWord(t *testing.T) {
+	resultado := Renderizar("Señores:\n«NOMBRES»\nEmpresa: «EMPRESA»", contactoDePrueba())
+
+	esperado := "Señores:\nAna Quispe\nEmpresa: Agroindustrias del Sur"
+	if resultado.Texto != esperado {
+		t.Fatalf("se esperaba %q y se obtuvo %q", esperado, resultado.Texto)
+	}
+
+	if len(resultado.SinValor) != 0 {
+		t.Fatalf("no se esperaban variables sin valor, se obtuvo %v", resultado.SinValor)
+	}
+}
+
+func TestRenderizarAplicaAliasDeCamposDeWord(t *testing.T) {
+	resultado := Renderizar("«RAZON SOCIAL» de «PAIS»", contactoDePrueba())
+
+	if resultado.Texto != "Agroindustrias del Sur de Perú" {
+		t.Fatalf("no se aplicaron los alias: %q", resultado.Texto)
+	}
+}
+
+func TestRenderizarMezclaLlavesYComillasAngulares(t *testing.T) {
+	resultado := Renderizar("«NOMBRES» de {empresa}", contactoDePrueba())
+
+	if resultado.Texto != "Ana Quispe de Agroindustrias del Sur" {
+		t.Fatalf("no se combinaron ambos formatos: %q", resultado.Texto)
+	}
+}
+
+func TestRenderizarConservaCampoDeWordSinDato(t *testing.T) {
+	resultado := Renderizar("Cupo: «CUPO ASIGNADO»", contactoDePrueba())
+
+	if resultado.Texto != "Cupo: «CUPO ASIGNADO»" {
+		t.Fatalf("un campo sin dato debía conservarse: %q", resultado.Texto)
+	}
+
+	if !reflect.DeepEqual(resultado.SinValor, []string{"cupo_asignado"}) {
+		t.Fatalf("se esperaba [cupo_asignado] y se obtuvo %v", resultado.SinValor)
 	}
 }
