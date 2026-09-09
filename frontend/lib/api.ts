@@ -1,10 +1,12 @@
 import { descargar, peticion } from "./api-client";
 import type {
   Adjunto,
+  Borrador,
   Contacto,
   ContenidoWord,
   Correspondencia,
   Envio,
+  EstadoAsistente,
   Lista,
   Paginado,
   Previsualizacion,
@@ -12,6 +14,7 @@ import type {
   ResumenEnvios,
   ResultadoPrueba,
   ResumenImportacion,
+  Revision,
   Sesion,
   Supresion,
   Usuario,
@@ -98,6 +101,27 @@ export const api = {
 
   obtenerCorrespondencia(id: string): Promise<Correspondencia> {
     return peticion<Correspondencia>(`/correspondencia/${id}`);
+  },
+
+  estadoAsistente(): Promise<EstadoAsistente> {
+    return peticion<EstadoAsistente>("/asistente/estado");
+  },
+
+  redactarConAsistente(datos: {
+    instruccion: string;
+    asunto?: string;
+    cuerpo?: string;
+    variables?: string[];
+  }): Promise<Borrador> {
+    return peticion<Borrador>("/asistente/redactar", { metodo: "POST", cuerpo: datos });
+  },
+
+  revisarConAsistente(datos: {
+    asunto: string;
+    cuerpo: string;
+    variables?: string[];
+  }): Promise<Revision> {
+    return peticion<Revision>("/asistente/revisar", { metodo: "POST", cuerpo: datos });
   },
 
   leerDocumento(archivo: File): Promise<ContenidoWord> {
