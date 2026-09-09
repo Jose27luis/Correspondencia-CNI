@@ -11,9 +11,9 @@ import (
 	"syscall"
 	"time"
 
+	"github.com/hibiken/asynq"
 	"github.com/joho/godotenv"
 
-	"github.com/Jose27luis/Correspondencia-CNI/backend/internal/shared/auth"
 	"github.com/Jose27luis/Correspondencia-CNI/backend/internal/shared/config"
 	"github.com/Jose27luis/Correspondencia-CNI/backend/internal/shared/db"
 	"github.com/Jose27luis/Correspondencia-CNI/backend/internal/shared/server"
@@ -49,7 +49,15 @@ func ejecutar() error {
 	}
 	defer pool.Close()
 
-	manejador, err := server.NuevoRouter(pool, auth.NuevoEmisor(cfg.JWTSecret, auth.VigenciaDefecto))
+	opcionesRedis, err := asynq.ParseRedisURI(cfg.RedisURL)
+	if err != nil {
+		return fmt.Errorf("REDIS_URL inválida: %w", err)
+	}
+
+	cliente := asynq.NewClient(opcionesRedis)
+	defer cliente.Close()
+
+	manejador, err := server.NuevoRouter(pool, cfg, cliente)
 	if err != nil {
 		return err
 	}
