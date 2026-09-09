@@ -6,11 +6,14 @@ import (
 	"time"
 
 	"github.com/go-chi/chi/v5"
-	"github.com/go-chi/chi/v5/middleware"
+	chimiddleware "github.com/go-chi/chi/v5/middleware"
 	"github.com/jackc/pgx/v5/pgxpool"
 
 	"github.com/Jose27luis/Correspondencia-CNI/backend/internal/contacts"
+	"github.com/Jose27luis/Correspondencia-CNI/backend/internal/shared/auth"
 	"github.com/Jose27luis/Correspondencia-CNI/backend/internal/shared/httpx"
+	"github.com/Jose27luis/Correspondencia-CNI/backend/internal/shared/middleware"
+	"github.com/Jose27luis/Correspondencia-CNI/backend/internal/users"
 )
 
 type EstadoSalud struct {
@@ -18,21 +21,34 @@ type EstadoSalud struct {
 	BaseDeDatos string `json:"base_de_datos"`
 }
 
-func NuevoRouter(pool *pgxpool.Pool) http.Handler {
+func NuevoRouter(pool *pgxpool.Pool, emisor *auth.Emisor) (http.Handler, error) {
+	servicioUsuarios, err := users.NuevoServicio(users.NuevoRepositorio(pool), emisor)
+	if err != nil {
+		return nil, err
+	}
+
+	handlerUsuarios := users.NuevoHandler(servicioUsuarios)
+	handlerContactos := contacts.NuevoHandler(contacts.NuevoServicio(contacts.NuevoRepositorio(pool)))
+
 	r := chi.NewRouter()
 
-	r.Use(middleware.RequestID)
-	r.Use(middleware.RealIP)
-	r.Use(middleware.Recoverer)
-	r.Use(middleware.Timeout(30 * time.Second))
+	r.Use(chimiddleware.RequestID)
+	r.Use(chimiddleware.RealIP)
+	r.Use(chimiddleware.Recoverer)
+	r.Use(chimiddleware.Timeout(30 * time.Second))
 
 	r.Get("/salud", manejarSalud(pool))
 
-	handlerContactos := contacts.NuevoHandler(contacts.NuevoServicio(contacts.NuevoRepositorio(pool)))
-
 	r.Route("/api", func(api chi.Router) {
 		api.Get("/salud", manejarSalud(pool))
-		handlerContactos.Registrar(api)
+
+		handlerUsuarios.RegistrarPublicas(api)
+
+		api.Group(func(protegidas chi.Router) {
+			protegidas.Use(middleware.RequiereAutenticacion(emisor))
+			handlerUsuarios.RegistrarProtegidas(protegidas)
+			handlerContactos.Registrar(protegidas)
+		})
 	})
 
 	r.NotFound(func(w http.ResponseWriter, r *http.Request) {
@@ -43,7 +59,7 @@ func NuevoRouter(pool *pgxpool.Pool) http.Handler {
 		httpx.Error(w, http.StatusMethodNotAllowed, "método no permitido")
 	})
 
-	return r
+	return r, nil
 }
 
 func manejarSalud(pool *pgxpool.Pool) http.HandlerFunc {
