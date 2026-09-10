@@ -16,6 +16,64 @@ func TestMapearCabeceraAceptaAliasYOrdenLibre(t *testing.T) {
 	}
 }
 
+func TestExcelDeCNISinColumnaNombre(t *testing.T) {
+	cabecera := []string{
+		"EMPRESA", "RUC", "CIUDAD/REGIÓN", "TELEFONO FIJO",
+		"TELEFONO MOVIL", "CORREO", "FACEBOOK", "PÁGINA WEB",
+	}
+
+	indices, err := mapearCabecera(cabecera)
+	if err != nil {
+		t.Fatalf("la cabecera del Excel de CNI debía aceptarse, se obtuvo %v", err)
+	}
+
+	for _, clave := range []string{"ruc", "ciudad_region", "telefono_fijo", "telefono_movil", "facebook", "pagina_web"} {
+		if _, existe := indices.extras[clave]; !existe {
+			t.Fatalf("falta la variable %s en %v", clave, indices.extras)
+		}
+	}
+
+	entrada, err := construirEntrada([]string{
+		"Molinos del Sur SAC", "20512345678", "Arequipa", "054123456",
+		"987654321", "VENTAS@molinos.pe", "", "www.molinos.pe",
+	}, indices)
+	if err != nil {
+		t.Fatalf("no se esperaba error, se obtuvo %v", err)
+	}
+
+	if entrada.Nombre != "Molinos del Sur SAC" {
+		t.Fatalf("sin columna de nombre debía usarse la empresa, se obtuvo %q", entrada.Nombre)
+	}
+
+	if entrada.Correo != "ventas@molinos.pe" {
+		t.Fatalf("el correo no se normalizó: %q", entrada.Correo)
+	}
+
+	var extras map[string]string
+	if err := json.Unmarshal(entrada.CamposExtra, &extras); err != nil {
+		t.Fatalf("campos extra inválidos: %v", err)
+	}
+
+	if extras["ruc"] != "20512345678" || extras["ciudad_region"] != "Arequipa" {
+		t.Fatalf("no se guardaron RUC y ciudad: %v", extras)
+	}
+
+	if _, existe := extras["facebook"]; existe {
+		t.Fatalf("una celda vacía no debía guardarse: %v", extras)
+	}
+}
+
+func TestConstruirEntradaRechazaEmpresaVacia(t *testing.T) {
+	indices, err := mapearCabecera([]string{"EMPRESA", "CORREO"})
+	if err != nil {
+		t.Fatalf("no se esperaba error, se obtuvo %v", err)
+	}
+
+	if _, err := construirEntrada([]string{"", "a@b.pe"}, indices); err == nil {
+		t.Fatal("se esperaba error por empresa vacía")
+	}
+}
+
 func TestMapearCabeceraExigeLasTresObligatorias(t *testing.T) {
 	if _, err := mapearCabecera([]string{"nombre", "empresa"}); err != ErrCabeceraCSVInvalida {
 		t.Fatalf("se esperaba ErrCabeceraCSVInvalida, se obtuvo %v", err)
