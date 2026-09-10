@@ -200,20 +200,23 @@ export default function PaginaContactos() {
           <div className="max-w-2xl space-y-2">
             <p className="text-sm font-medium">Cómo preparar el archivo</p>
             <p className="text-sm text-muted-foreground">
-              Suba su archivo de Excel (.xlsx) o un CSV. Solo son obligatorias tres columnas:{" "}
-              <code className="rounded bg-zinc-100 px-1 py-0.5 text-xs">nombre</code>,{" "}
-              <code className="rounded bg-zinc-100 px-1 py-0.5 text-xs">empresa</code> y{" "}
-              <code className="rounded bg-zinc-100 px-1 py-0.5 text-xs">correo</code>. El orden no
-              importa y puede usar <code className="rounded bg-zinc-100 px-1 py-0.5 text-xs">email</code>{" "}
-              en vez de correo.
+              Suba su archivo de Excel (.xlsx) o un CSV. Solo son obligatorias dos columnas:{" "}
+              <code className="rounded bg-zinc-100 px-1 py-0.5 text-xs">EMPRESA</code> y{" "}
+              <code className="rounded bg-zinc-100 px-1 py-0.5 text-xs">CORREO</code>. El orden y las
+              mayúsculas no importan. Si no hay columna de nombre de persona, se usa el nombre de la
+              empresa.
             </p>
             <p className="text-sm text-muted-foreground">
-              Cualquier otra columna, como{" "}
-              <code className="rounded bg-zinc-100 px-1 py-0.5 text-xs">pais</code>,{" "}
-              <code className="rounded bg-zinc-100 px-1 py-0.5 text-xs">cargo</code> o{" "}
-              <code className="rounded bg-zinc-100 px-1 py-0.5 text-xs">ruc</code>, se guarda y queda
-              disponible como variable en las cartas, por ejemplo{" "}
-              <code className="rounded bg-zinc-100 px-1 py-0.5 text-xs">{"{cargo}"}</code>.
+              Las demás columnas, como{" "}
+              <code className="rounded bg-zinc-100 px-1 py-0.5 text-xs">RUC</code>,{" "}
+              <code className="rounded bg-zinc-100 px-1 py-0.5 text-xs">CIUDAD/REGIÓN</code>,{" "}
+              <code className="rounded bg-zinc-100 px-1 py-0.5 text-xs">TELEFONO MOVIL</code> o{" "}
+              <code className="rounded bg-zinc-100 px-1 py-0.5 text-xs">PÁGINA WEB</code>, se guardan y
+              quedan disponibles como variables en las cartas:{" "}
+              <code className="rounded bg-zinc-100 px-1 py-0.5 text-xs">{"{ruc}"}</code>,{" "}
+              <code className="rounded bg-zinc-100 px-1 py-0.5 text-xs">{"{ciudad_region}"}</code>,{" "}
+              <code className="rounded bg-zinc-100 px-1 py-0.5 text-xs">{"{telefono_movil}"}</code>,{" "}
+              <code className="rounded bg-zinc-100 px-1 py-0.5 text-xs">{"{pagina_web}"}</code>.
             </p>
             <p className="text-sm text-muted-foreground">
               Si un correo ya existe, el contacto se actualiza en lugar de duplicarse.
