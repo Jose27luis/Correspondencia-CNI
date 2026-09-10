@@ -19,7 +19,7 @@ const (
 	maximoFilasCSV   = 20000
 )
 
-var ErrCabeceraCSVInvalida = errors.New("el archivo debe tener las columnas nombre, empresa y correo")
+var ErrCabeceraCSVInvalida = errors.New("el archivo debe tener al menos las columnas empresa y correo")
 
 type Servicio struct {
 	repositorio *Repositorio
@@ -230,11 +230,11 @@ func mapearCabecera(cabecera []string) (indicesCSV, error) {
 		nombreColumna := strings.ToLower(strings.TrimSpace(strings.TrimPrefix(columna, "\ufeff")))
 
 		switch nombreColumna {
-		case "nombre":
+		case "nombre", "nombres", "contacto":
 			indices.nombre = posicion
-		case "empresa":
+		case "empresa", "razon social", "razón social":
 			indices.empresa = posicion
-		case "correo", "email":
+		case "correo", "email", "correo electronico", "correo electrónico":
 			indices.correo = posicion
 		case "pais", "país":
 			indices.pais = posicion
@@ -245,7 +245,7 @@ func mapearCabecera(cabecera []string) (indicesCSV, error) {
 		}
 	}
 
-	if indices.nombre < 0 || indices.empresa < 0 || indices.correo < 0 {
+	if indices.empresa < 0 || indices.correo < 0 {
 		return indicesCSV{}, ErrCabeceraCSVInvalida
 	}
 
@@ -259,7 +259,7 @@ func normalizarClave(columna string) string {
 		switch {
 		case caracter >= 'a' && caracter <= 'z', caracter >= '0' && caracter <= '9':
 			construida.WriteRune(caracter)
-		case caracter == ' ', caracter == '-', caracter == '_':
+		case caracter == ' ', caracter == '-', caracter == '_', caracter == '/':
 			construida.WriteRune('_')
 		case caracter == 'á':
 			construida.WriteRune('a')
@@ -313,10 +313,18 @@ func construirEntrada(fila []string, indices indicesCSV) (EntradaContacto, error
 		}
 	}
 
+	if strings.TrimSpace(entrada.Nombre) == "" {
+		entrada.Nombre = entrada.Empresa
+	}
+
 	entrada.Normalizar()
 
 	if entrada.Correo == "" {
 		return EntradaContacto{}, errors.New("correo vacío")
+	}
+
+	if entrada.Empresa == "" {
+		return EntradaContacto{}, errors.New("empresa vacía")
 	}
 
 	return entrada, nil
