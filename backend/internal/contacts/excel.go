@@ -13,11 +13,19 @@ const hojaPlantilla = "Contactos"
 
 var ErrExcelSinFilas = errors.New("el archivo de Excel no tiene filas")
 
-var columnasPlantilla = []string{"nombre", "empresa", "correo", "pais", "cargo"}
+var columnasPlantilla = []string{
+	"EMPRESA",
+	"RUC",
+	"CIUDAD/REGIÓN",
+	"TELEFONO FIJO",
+	"TELEFONO MOVIL",
+	"CORREO",
+	"FACEBOOK",
+	"PÁGINA WEB",
+}
 
 var ejemploPlantilla = [][]string{
-	{"Ana Quispe", "Agroindustrias del Sur SAC", "ana.quispe@ejemplo.pe", "Perú", "Gerente de Compras"},
-	{"Luis Mamani", "Transportes Interoceánica EIRL", "luis.mamani@ejemplo.pe", "Perú", "Jefe de Logística"},
+	{"Empresa de ejemplo SAC", "20000000001", "Lima", "", "", "contacto@ejemplo.pe", "", ""},
 }
 
 func LeerExcel(lector io.Reader) ([][]string, error) {
@@ -32,7 +40,7 @@ func LeerExcel(lector io.Reader) ([][]string, error) {
 		return nil, ErrExcelSinFilas
 	}
 
-	filas, err := libro.GetRows(hojas[0])
+	filas, err := libro.GetRows(hojas[0], excelize.Options{RawCellValue: true})
 	if err != nil {
 		return nil, fmt.Errorf("no se pudieron leer las filas: %w", err)
 	}
@@ -120,12 +128,12 @@ func GenerarPlantilla() (*excelize.File, error) {
 
 func anchoColumna(columna string) float64 {
 	switch columna {
-	case "empresa":
+	case "EMPRESA":
 		return 34
-	case "correo":
+	case "CORREO", "PÁGINA WEB", "FACEBOOK":
 		return 30
-	case "nombre", "cargo":
-		return 24
+	case "CIUDAD/REGIÓN", "TELEFONO FIJO", "TELEFONO MOVIL":
+		return 18
 	default:
 		return 14
 	}
