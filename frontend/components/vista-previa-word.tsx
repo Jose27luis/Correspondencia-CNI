@@ -42,20 +42,39 @@ export function VistaPreviaWord({
     enabled: visible && listaId !== null,
   });
 
-  const documento = useQuery({
-    queryKey: ["vista-previa-word", correspondenciaId, contactoId, versionPlantilla],
-    queryFn: () =>
-      api.vistaPreviaPlantilla(
-        correspondenciaId,
-        contactoId === PRIMERO ? undefined : contactoId,
-      ),
+  const contactoElegido = contactoId === PRIMERO ? undefined : contactoId;
+
+  const documentoPdf = useQuery({
+    queryKey: ["vista-previa-pdf", correspondenciaId, contactoId, versionPlantilla],
+    queryFn: () => api.vistaPreviaPlantilla(correspondenciaId, contactoElegido, "pdf"),
     enabled: visible,
     retry: false,
   });
 
+  const usarVisorWord = documentoPdf.isError;
+
+  const documento = useQuery({
+    queryKey: ["vista-previa-word", correspondenciaId, contactoId, versionPlantilla],
+    queryFn: () => api.vistaPreviaPlantilla(correspondenciaId, contactoElegido),
+    enabled: visible && usarVisorWord,
+    retry: false,
+  });
+
+  const [urlPdf, setUrlPdf] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (!documentoPdf.data) {
+      setUrlPdf(null);
+      return;
+    }
+    const url = URL.createObjectURL(documentoPdf.data);
+    setUrlPdf(url);
+    return () => URL.revokeObjectURL(url);
+  }, [documentoPdf.data]);
+
   useEffect(() => {
     const destino = contenedor.current;
-    if (!visible || !documento.data || !destino) {
+    if (!visible || !usarVisorWord || !documento.data || !destino) {
       return;
     }
 
@@ -89,14 +108,13 @@ export function VistaPreviaWord({
     return () => {
       cancelado = true;
     };
-  }, [documento.data, visible]);
+  }, [documento.data, visible, usarVisorWord]);
 
-  function descargar() {
-    if (!documento.data) {
-      return;
-    }
+  async function descargar() {
+    const archivo =
+      documento.data ?? (await api.vistaPreviaPlantilla(correspondenciaId, contactoElegido));
     const enlace = document.createElement("a");
-    enlace.href = URL.createObjectURL(documento.data);
+    enlace.href = URL.createObjectURL(archivo);
     enlace.download = nombrePlantilla;
     document.body.appendChild(enlace);
     enlace.click();
@@ -117,7 +135,7 @@ export function VistaPreviaWord({
           )}
           {visible ? "Ocultar vista previa" : "Ver cómo quedará la carta"}
         </Button>
-        {visible && documento.data && (
+        {visible && (urlPdf || documento.data) && (
           <Button type="button" variant="ghost" size="sm" onClick={descargar}>
             <Download className="mr-2 h-4 w-4" aria-hidden="true" />
             Descargar esta versión
@@ -154,7 +172,7 @@ export function VistaPreviaWord({
             </p>
           )}
 
-          {documento.isFetching && (
+          {(documentoPdf.isFetching || documento.isFetching) && (
             <p className="flex items-center gap-2 text-sm text-muted-foreground">
               <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" />
               Generando la carta personalizada
@@ -175,13 +193,24 @@ export function VistaPreviaWord({
             </p>
           )}
 
-          <div className="max-h-[80vh] overflow-auto rounded-lg border border-zinc-200 bg-zinc-100">
-            <div ref={contenedor} />
-          </div>
+          {urlPdf && !documentoPdf.isFetching && (
+            <iframe
+              src={urlPdf}
+              title={`Vista previa de ${nombrePlantilla}`}
+              className="h-[80vh] w-full rounded-lg border border-zinc-200 bg-zinc-100"
+            />
+          )}
+
+          {usarVisorWord && (
+            <div className="max-h-[80vh] overflow-auto rounded-lg border border-zinc-200 bg-zinc-100">
+              <div ref={contenedor} />
+            </div>
+          )}
 
           <p className="text-xs text-muted-foreground">
-            Vista aproximada generada en el navegador. Algunos detalles de diseño muy específicos de
-            Word pueden verse ligeramente distintos; la descarga es el archivo exacto que se enviará.
+            {usarVisorWord
+              ? "Vista aproximada generada en el navegador; algunos detalles de diseño pueden verse distintos. La descarga es el archivo exacto que se enviará."
+              : "Vista con la maquetación real de la carta, página por página. La descarga es el archivo Word exacto que se enviará."}
           </p>
         </div>
       )}
