@@ -22,6 +22,7 @@ type Config struct {
 	UrlPublicaArchivos    string
 	UrlPanel              string
 	AnthropicAPIKey       string
+	SofficeRuta           string
 	UsuarioInicialCorreo  string
 	UsuarioInicialClave   string
 	TiempoEsperaLectura   time.Duration
@@ -53,6 +54,7 @@ func Cargar() (Config, error) {
 		UrlPublicaArchivos:    os.Getenv("URL_PUBLICA_ARCHIVOS"),
 		UrlPanel:              obtenerTexto("URL_PANEL", "https://correspondencia.tendero.pe"),
 		AnthropicAPIKey:       os.Getenv("ANTHROPIC_API_KEY"),
+		SofficeRuta:           obtenerTexto("SOFFICE_RUTA", "/opt/libreoffice/program/soffice"),
 		UsuarioInicialCorreo:  os.Getenv("USUARIO_INICIAL_CORREO"),
 		UsuarioInicialClave:   os.Getenv("USUARIO_INICIAL_CONTRASENA"),
 		TiempoEsperaLectura:   15 * time.Second,
