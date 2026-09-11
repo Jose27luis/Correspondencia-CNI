@@ -12,7 +12,7 @@ import (
 )
 
 const (
-	modelo          = "claude-opus-5"
+	modelo          = "claude-haiku-4-5"
 	tokensRedaccion = 8000
 	tokensRevision  = 4000
 )
@@ -176,12 +176,9 @@ func (a *Asistente) Revisar(ctx context.Context, asunto string, cuerpo string, v
 }
 
 func (a *Asistente) pedir(ctx context.Context, sistema string, peticion string, tokens int64) (string, error) {
-	adaptativo := anthropic.ThinkingConfigAdaptiveParam{}
-
 	respuesta, err := a.cliente.Messages.New(ctx, anthropic.MessageNewParams{
 		Model:     modelo,
 		MaxTokens: tokens,
-		Thinking:  anthropic.ThinkingConfigParamUnion{OfAdaptive: &adaptativo},
 		System: []anthropic.TextBlockParam{{
 			Text:         sistema,
 			CacheControl: anthropic.NewCacheControlEphemeralParam(),
