@@ -193,6 +193,44 @@ func TestGenerarDocumentoNoTocaParrafosSinVariables(t *testing.T) {
 	}
 }
 
+func TestGenerarDocumentoRespetaSaltosYFormatoFueraDeLaVariable(t *testing.T) {
+	plantilla := plantillaDePrueba(t,
+		`<w:p><w:r><w:rPr><w:b/></w:rPr><w:t>«NOMBRES»</w:t></w:r>`+
+			`<w:r><w:br/><w:rPr><w:i/></w:rPr><w:t>Vía electrónica</w:t></w:r></w:p>`)
+
+	generado, err := GenerarDocumento(plantilla, contactoGenerador())
+	if err != nil {
+		t.Fatalf("no se esperaba error, se obtuvo %v", err)
+	}
+
+	if texto := textoDelDocumento(t, generado); texto != "Ana Quispe\nVía electrónica" {
+		t.Fatalf("el salto de línea no se respetó: %q", texto)
+	}
+
+	documento := xmlDelDocumento(t, generado)
+	if !strings.Contains(documento, `<w:b/></w:rPr><w:t>Ana Quispe</w:t>`) {
+		t.Fatalf("el nombre perdió su negrita: %s", documento)
+	}
+	if !strings.Contains(documento, `<w:i/></w:rPr><w:t>Vía electrónica</w:t>`) {
+		t.Fatalf("el texto siguiente perdió su cursiva o su posición: %s", documento)
+	}
+}
+
+func TestGenerarDocumentoReemplazaVariasVariablesEnUnParrafo(t *testing.T) {
+	plantilla := plantillaDePrueba(t,
+		`<w:p><w:r><w:t>Para {nombre}, </w:t></w:r><w:r><w:t>de «EMPRESA» (</w:t></w:r>`+
+			`<w:r><w:t>{pais})</w:t></w:r></w:p>`)
+
+	generado, err := GenerarDocumento(plantilla, contactoGenerador())
+	if err != nil {
+		t.Fatalf("no se esperaba error, se obtuvo %v", err)
+	}
+
+	if texto := textoDelDocumento(t, generado); texto != "Para Ana Quispe, de Agroindustrias del Sur (Perú)" {
+		t.Fatalf("no se reemplazaron todas las variables: %q", texto)
+	}
+}
+
 func TestGenerarDocumentoRechazaArchivoInvalido(t *testing.T) {
 	if _, err := GenerarDocumento([]byte("no es un docx"), contactoGenerador()); err == nil {
 		t.Fatal("se esperaba error con un archivo inválido")
