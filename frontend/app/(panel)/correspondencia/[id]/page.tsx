@@ -23,6 +23,7 @@ import { toast } from "sonner";
 
 import { DialogoConfirmacion } from "@/components/dialogo-confirmacion";
 import { RevisionCarta } from "@/components/revision-carta";
+import { VistaPreviaWord } from "@/components/vista-previa-word";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -510,6 +511,15 @@ export default function PaginaDetalleCorrespondencia() {
               </p>
             )}
 
+            {datos.plantilla_nombre && (
+              <VistaPreviaWord
+                correspondenciaId={datos.id}
+                listaId={datos.lista_id}
+                nombrePlantilla={datos.plantilla_nombre}
+                versionPlantilla={datos.actualizado_en}
+              />
+            )}
+
             <input
               ref={referenciaPlantilla}
               type="file"
@@ -672,6 +682,15 @@ export default function PaginaDetalleCorrespondencia() {
                   </li>
                 ))}
               </ul>
+            )}
+
+            {datos.plantilla_nombre && (
+              <VistaPreviaWord
+                correspondenciaId={datos.id}
+                listaId={datos.lista_id}
+                nombrePlantilla={datos.plantilla_nombre}
+                versionPlantilla={datos.actualizado_en}
+              />
             )}
           </CardContent>
         </Card>
