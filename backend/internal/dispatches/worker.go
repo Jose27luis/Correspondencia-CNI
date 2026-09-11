@@ -83,11 +83,14 @@ func (w *Worker) procesarEnvio(ctx context.Context, tarea *asynq.Task) error {
 	cuerpo := correspondence.Renderizar(pieza.Cuerpo, contacto)
 
 	textoFinal := cuerpo.Texto
+	cabeceras := map[string]string{}
 	if w.exclusiones != nil {
 		textoFinal += fmt.Sprintf(
-			"\n\n---\nSi no desea recibir más comunicaciones comerciales de CNI, puede darse de baja aquí:\n%s",
+			"\n\nSi prefiere no recibir más mensajes nuestros, puede indicarlo aquí: %s",
 			w.exclusiones.EnlaceDeBaja(contacto.ID),
 		)
+		cabeceras["List-Unsubscribe"] = fmt.Sprintf("<%s>", w.exclusiones.EnlaceBajaUnClic(contacto.ID))
+		cabeceras["List-Unsubscribe-Post"] = "List-Unsubscribe=One-Click"
 	}
 
 	adjuntos := make([]mailer.Adjunto, 0, len(pieza.Adjuntos)+1)
@@ -116,10 +119,11 @@ func (w *Worker) procesarEnvio(ctx context.Context, tarea *asynq.Task) error {
 	}
 
 	resultado, err := w.proveedor.Enviar(ctx, mailer.Mensaje{
-		Para:     contacto.Correo,
-		Asunto:   asunto.Texto,
-		Cuerpo:   textoFinal,
-		Adjuntos: adjuntos,
+		Para:      contacto.Correo,
+		Asunto:    asunto.Texto,
+		Cuerpo:    textoFinal,
+		Adjuntos:  adjuntos,
+		Cabeceras: cabeceras,
 	})
 	if err != nil {
 		slog.Error("no se pudo enviar el correo", "envio_id", carga.EnvioID, "correo", contacto.Correo, "error", err)
