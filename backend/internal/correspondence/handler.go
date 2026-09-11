@@ -13,17 +13,19 @@ import (
 
 	"github.com/Jose27luis/Correspondencia-CNI/backend/internal/shared/auth"
 	"github.com/Jose27luis/Correspondencia-CNI/backend/internal/shared/httpx"
+	"github.com/Jose27luis/Correspondencia-CNI/backend/internal/shared/pdf"
 	"github.com/Jose27luis/Correspondencia-CNI/backend/internal/shared/storage"
 )
 
 const tamanoMaximoSubida = 25 << 20
 
 type Handler struct {
-	servicio *Servicio
+	servicio    *Servicio
+	convertidor *pdf.Convertidor
 }
 
-func NuevoHandler(servicio *Servicio) *Handler {
-	return &Handler{servicio: servicio}
+func NuevoHandler(servicio *Servicio, convertidor *pdf.Convertidor) *Handler {
+	return &Handler{servicio: servicio, convertidor: convertidor}
 }
 
 func (h *Handler) Registrar(r chi.Router) {
@@ -211,6 +213,28 @@ func (h *Handler) vistaPreviaPlantilla(w http.ResponseWriter, r *http.Request) {
 	vista, err := h.servicio.GenerarVistaPrevia(r.Context(), id, contactoID)
 	if err != nil {
 		responderError(w, err)
+		return
+	}
+
+	if r.URL.Query().Get("formato") == "pdf" {
+		documento, err := h.convertidor.ConvertirDOCX(r.Context(), vista.Documento)
+		if err != nil {
+			if errors.Is(err, pdf.ErrNoDisponible) {
+				httpx.Error(w, http.StatusServiceUnavailable, "la vista en PDF no está disponible en este servidor")
+				return
+			}
+			slog.Error("no se pudo convertir la vista previa a PDF", "error", err)
+			httpx.Error(w, http.StatusInternalServerError, "no se pudo generar la vista en PDF")
+			return
+		}
+
+		w.Header().Set("Content-Type", "application/pdf")
+		w.Header().Set("Content-Disposition", `inline; filename="vista-previa.pdf"`)
+		w.Header().Set("Cache-Control", "no-store")
+
+		if _, err := w.Write(documento); err != nil {
+			slog.Error("no se pudo enviar la vista previa en PDF", "error", err)
+		}
 		return
 	}
 
