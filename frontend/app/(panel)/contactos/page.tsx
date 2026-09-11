@@ -34,6 +34,24 @@ import type { Contacto } from "@/lib/tipos";
 
 const POR_PAGINA = 25;
 
+function extra(contacto: Contacto, clave: string): string {
+  const valor = contacto.campos_extra[clave];
+  return typeof valor === "string" ? valor.trim() : "";
+}
+
+function primerEnlace(texto: string): string | null {
+  const coincidencia = texto.match(/https?:\/\/[^\s]+/);
+  return coincidencia ? coincidencia[0] : null;
+}
+
+function dominio(enlace: string): string {
+  try {
+    return new URL(enlace).hostname.replace(/^www\./, "");
+  } catch {
+    return enlace;
+  }
+}
+
 export default function PaginaContactos() {
   const [busqueda, setBusqueda] = useState("");
   const [pagina, setPagina] = useState(0);
@@ -325,19 +343,68 @@ export default function PaginaContactos() {
               <TableHeader>
                 <TableRow>
                   <TableHead>Empresa</TableHead>
-                  <TableHead>Contacto</TableHead>
+                  <TableHead>Ciudad / región</TableHead>
+                  <TableHead>Teléfonos</TableHead>
                   <TableHead>Correo</TableHead>
-                  <TableHead>País</TableHead>
+                  <TableHead>Web</TableHead>
                   <TableHead className="w-12" />
                 </TableRow>
               </TableHeader>
               <TableBody>
                 {contactos.map((contacto) => (
                   <TableRow key={contacto.id}>
-                    <TableCell className="font-medium">{contacto.empresa}</TableCell>
-                    <TableCell>{contacto.nombre}</TableCell>
+                    <TableCell>
+                      <span className="block font-medium">{contacto.empresa}</span>
+                      {extra(contacto, "ruc") && (
+                        <span className="block text-xs text-muted-foreground">
+                          RUC {extra(contacto, "ruc")}
+                        </span>
+                      )}
+                      {contacto.nombre !== contacto.empresa && (
+                        <span className="block text-xs text-muted-foreground">
+                          {contacto.nombre}
+                        </span>
+                      )}
+                    </TableCell>
+                    <TableCell className="text-muted-foreground">
+                      {extra(contacto, "ciudad_region") || contacto.pais || "—"}
+                    </TableCell>
+                    <TableCell className="text-muted-foreground">
+                      {extra(contacto, "telefono_movil") || extra(contacto, "telefono_fijo") ? (
+                        <>
+                          {extra(contacto, "telefono_movil") && (
+                            <span className="block whitespace-nowrap">
+                              {extra(contacto, "telefono_movil")}
+                            </span>
+                          )}
+                          {extra(contacto, "telefono_fijo") && (
+                            <span className="block whitespace-nowrap text-xs">
+                              {extra(contacto, "telefono_fijo")}
+                            </span>
+                          )}
+                        </>
+                      ) : (
+                        "—"
+                      )}
+                    </TableCell>
                     <TableCell className="text-muted-foreground">{contacto.correo}</TableCell>
-                    <TableCell className="text-muted-foreground">{contacto.pais ?? "—"}</TableCell>
+                    <TableCell>
+                      {(() => {
+                        const enlace = primerEnlace(extra(contacto, "pagina_web"));
+                        return enlace ? (
+                          <a
+                            href={enlace}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="text-sm text-emerald-700 hover:underline"
+                          >
+                            {dominio(enlace)}
+                          </a>
+                        ) : (
+                          <span className="text-muted-foreground">—</span>
+                        );
+                      })()}
+                    </TableCell>
                     <TableCell>
                       <Button
                         type="button"
