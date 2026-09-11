@@ -561,7 +561,15 @@ export default function PaginaDetalleCorrespondencia() {
                         className="h-4 w-4 shrink-0 text-muted-foreground"
                         aria-hidden="true"
                       />
-                      <span className="truncate text-sm">{adjunto.nombre_archivo}</span>
+                      <span className="min-w-0">
+                        <span className="block truncate text-sm">{adjunto.nombre_archivo}</span>
+                        {adjunto.nombre_archivo.toLowerCase().endsWith(".docx") && (
+                          <span className="block text-xs text-amber-700">
+                            Este Word llega igual a todos: sus campos como «NOMBRES» no se
+                            reemplazan. Para personalizarlo, súbalo en Carta en Word personalizada.
+                          </span>
+                        )}
+                      </span>
                       <span className="shrink-0 text-xs text-muted-foreground">
                         {Math.round(adjunto.tamano_bytes / 1024)} KB
                       </span>
@@ -608,6 +616,63 @@ export default function PaginaDetalleCorrespondencia() {
               )}
               Adjuntar documento
             </Button>
+          </CardContent>
+        </Card>
+      )}
+
+      {!esBorrador && (
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-base">Documentos de esta carta</CardTitle>
+            <CardDescription>Lo que viajó adjunto en cada correo.</CardDescription>
+          </CardHeader>
+          <CardContent>
+            {!datos.plantilla_nombre && datos.adjuntos.length === 0 ? (
+              <p className="text-sm text-muted-foreground">
+                Esta carta se envió sin documentos adjuntos.
+              </p>
+            ) : (
+              <ul className="divide-y divide-zinc-100">
+                {datos.plantilla_nombre && datos.plantilla_url && (
+                  <li className="flex flex-wrap items-center justify-between gap-3 py-2.5">
+                    <span className="flex min-w-0 items-center gap-2">
+                      <FileText className="h-4 w-4 shrink-0 text-emerald-700" aria-hidden="true" />
+                      <span className="truncate text-sm font-medium">{datos.plantilla_nombre}</span>
+                      <Badge variant="secondary" className="bg-emerald-100 text-emerald-800">
+                        Personalizado por empresa
+                      </Badge>
+                    </span>
+                    <a
+                      href={datos.plantilla_url}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="text-sm text-emerald-700 hover:underline"
+                    >
+                      Descargar plantilla
+                    </a>
+                  </li>
+                )}
+                {datos.adjuntos.map((adjunto) => (
+                  <li key={adjunto.id} className="flex flex-wrap items-center justify-between gap-3 py-2.5">
+                    <span className="flex min-w-0 items-center gap-2">
+                      <Paperclip className="h-4 w-4 shrink-0 text-muted-foreground" aria-hidden="true" />
+                      <span className="truncate text-sm">{adjunto.nombre_archivo}</span>
+                      <span className="shrink-0 text-xs text-muted-foreground">
+                        {Math.round(adjunto.tamano_bytes / 1024)} KB · igual para todos
+                      </span>
+                    </span>
+                    <a
+                      href={adjunto.url_archivo}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="text-sm text-emerald-700 hover:underline"
+                    >
+                      Descargar
+                    </a>
+                  </li>
+                ))}
+              </ul>
+            )}
           </CardContent>
         </Card>
       )}
