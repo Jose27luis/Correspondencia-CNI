@@ -1,7 +1,7 @@
 "use client";
 
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { Download, Loader2, Plus, Search, Sparkles, Trash2, Upload } from "lucide-react";
+import { Download, Loader2, Pencil, Plus, Search, Sparkles, Trash2, Upload } from "lucide-react";
 import { useRef, useState } from "react";
 import { toast } from "sonner";
 
@@ -9,14 +9,7 @@ import { DialogoConfirmacion } from "@/components/dialogo-confirmacion";
 import { PegarContactos } from "@/components/pegar-contactos";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
+import { FormularioContacto } from "@/components/formulario-contacto";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -60,10 +53,7 @@ export default function PaginaContactos() {
   const [pegarAbierto, setPegarAbierto] = useState(false);
   const [consultaIA, setConsultaIA] = useState("");
   const [explicacion, setExplicacion] = useState("");
-  const [nombre, setNombre] = useState("");
-  const [empresa, setEmpresa] = useState("");
-  const [correo, setCorreo] = useState("");
-  const [pais, setPais] = useState("");
+  const [enEdicion, setEnEdicion] = useState<Contacto | null>(null);
   const referenciaArchivo = useRef<HTMLInputElement>(null);
   const clienteConsultas = useQueryClient();
 
@@ -128,22 +118,10 @@ export default function PaginaContactos() {
     },
   });
 
-  const creacion = useMutation({
-    mutationFn: () =>
-      api.crearContacto({ nombre, empresa, correo, pais: pais.trim() ? pais : null }),
-    onSuccess: (contacto) => {
-      refrescar();
-      setFormularioAbierto(false);
-      setNombre("");
-      setEmpresa("");
-      setCorreo("");
-      setPais("");
-      toast.success(`${contacto.empresa} agregada a la base de contactos`);
-    },
-    onError: (fallo: unknown) => {
-      toast.error(fallo instanceof ErrorPeticion ? fallo.message : "No se pudo guardar el contacto");
-    },
-  });
+  function abrirFormulario(contacto: Contacto | null) {
+    setEnEdicion(contacto);
+    setFormularioAbierto(true);
+  }
 
   const eliminacion = useMutation({
     mutationFn: (id: string) => api.eliminarContacto(id),
@@ -206,7 +184,7 @@ export default function PaginaContactos() {
             </Button>
           )}
 
-          <Button type="button" onClick={() => setFormularioAbierto(true)}>
+          <Button type="button" onClick={() => abrirFormulario(null)}>
             <Plus className="mr-2 h-4 w-4" aria-hidden="true" />
             Nuevo contacto
           </Button>
@@ -405,7 +383,17 @@ export default function PaginaContactos() {
                         );
                       })()}
                     </TableCell>
-                    <TableCell>
+                    <TableCell className="whitespace-nowrap text-right">
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="icon"
+                        onClick={() => abrirFormulario(contacto)}
+                        aria-label={`Editar ${contacto.empresa}`}
+                        className="h-8 w-8 text-muted-foreground hover:text-foreground"
+                      >
+                        <Pencil className="h-4 w-4" aria-hidden="true" />
+                      </Button>
                       <Button
                         type="button"
                         variant="ghost"
@@ -453,77 +441,17 @@ export default function PaginaContactos() {
         </CardContent>
       </Card>
 
-      <Dialog open={formularioAbierto} onOpenChange={setFormularioAbierto}>
-        <DialogContent className="sm:max-w-md">
-          <DialogHeader>
-            <DialogTitle>Nuevo contacto</DialogTitle>
-            <DialogDescription>
-              Registre una empresa que no esté en el archivo de importación.
-            </DialogDescription>
-          </DialogHeader>
-
-          <form
-            id="formulario-contacto"
-            onSubmit={(evento) => {
-              evento.preventDefault();
-              creacion.mutate();
-            }}
-            className="space-y-4"
-          >
-            <div className="space-y-1.5">
-              <Label htmlFor="empresa">Empresa</Label>
-              <Input
-                id="empresa"
-                value={empresa}
-                onChange={(evento) => setEmpresa(evento.target.value)}
-              />
-            </div>
-            <div className="space-y-1.5">
-              <Label htmlFor="nombre">Nombre del contacto</Label>
-              <Input
-                id="nombre"
-                value={nombre}
-                onChange={(evento) => setNombre(evento.target.value)}
-              />
-            </div>
-            <div className="space-y-1.5">
-              <Label htmlFor="correo">Correo</Label>
-              <Input
-                id="correo"
-                type="email"
-                value={correo}
-                onChange={(evento) => setCorreo(evento.target.value)}
-              />
-            </div>
-            <div className="space-y-1.5">
-              <Label htmlFor="pais">País</Label>
-              <Input id="pais" value={pais} onChange={(evento) => setPais(evento.target.value)} />
-            </div>
-          </form>
-
-          <DialogFooter className="gap-2 sm:gap-2">
-            <Button type="button" variant="outline" onClick={() => setFormularioAbierto(false)}>
-              Cancelar
-            </Button>
-            <Button
-              type="submit"
-              form="formulario-contacto"
-              disabled={
-                creacion.isPending ||
-                empresa.trim().length < 2 ||
-                nombre.trim().length < 2 ||
-                !correo.includes("@")
-              }
-              className="text-white"
-            >
-              {creacion.isPending && (
-                <Loader2 className="mr-2 h-4 w-4 animate-spin" aria-hidden="true" />
-              )}
-              Guardar contacto
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+      <FormularioContacto
+        abierto={formularioAbierto}
+        contacto={enEdicion}
+        alCambiar={(abierto) => {
+          setFormularioAbierto(abierto);
+          if (!abierto) {
+            setEnEdicion(null);
+          }
+        }}
+        alGuardar={refrescar}
+      />
 
       <PegarContactos
         abierto={pegarAbierto}
