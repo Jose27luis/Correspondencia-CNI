@@ -5,6 +5,7 @@ import type {
   Contacto,
   ContenidoWord,
   CriteriosBusqueda,
+  EntradaContacto,
   Correspondencia,
   Envio,
   EstadoAsistente,
@@ -41,13 +42,12 @@ export const api = {
     });
   },
 
-  crearContacto(datos: {
-    nombre: string;
-    empresa: string;
-    correo: string;
-    pais?: string | null;
-  }): Promise<Contacto> {
+  crearContacto(datos: EntradaContacto): Promise<Contacto> {
     return peticion<Contacto>("/contactos", { metodo: "POST", cuerpo: datos });
+  },
+
+  actualizarContacto(id: string, datos: EntradaContacto): Promise<Contacto> {
+    return peticion<Contacto>(`/contactos/${id}`, { metodo: "PUT", cuerpo: datos });
   },
 
   eliminarContacto(id: string): Promise<void> {
