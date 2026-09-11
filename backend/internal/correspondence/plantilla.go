@@ -9,7 +9,7 @@ import (
 	"github.com/Jose27luis/Correspondencia-CNI/backend/internal/contacts"
 )
 
-var patronVariable = regexp.MustCompile(`\{([a-zA-Z0-9_\- áéíóúÁÉÍÓÚñÑ]{1,60})\}|«([^»]{1,60})»`)
+var patronVariable = regexp.MustCompile(`\{([a-zA-Z0-9_\- áéíóúÁÉÍÓÚñÑ]{1,60})\}|«([^»]{1,60})»|<<([^<>]{1,60})>>`)
 
 var alias = map[string]string{
 	"nombres":            "nombre",
@@ -75,13 +75,16 @@ func Renderizar(texto string, contacto contacts.Contacto) Resultado {
 }
 
 func nombreVariable(coincidencia []string) string {
-	if len(coincidencia) < 3 {
+	if len(coincidencia) < 4 {
 		return ""
 	}
 
 	crudo := coincidencia[1]
 	if crudo == "" {
 		crudo = coincidencia[2]
+	}
+	if crudo == "" {
+		crudo = coincidencia[3]
 	}
 
 	return NormalizarNombreVariable(crudo)
