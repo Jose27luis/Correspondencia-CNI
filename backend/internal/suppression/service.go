@@ -46,6 +46,10 @@ func (s *Servicio) EnlaceDeBaja(contactoID uuid.UUID) string {
 	return fmt.Sprintf("%s/baja?c=%s&t=%s", s.urlPanel, contactoID, s.TokenDeBaja(contactoID))
 }
 
+func (s *Servicio) EnlaceBajaUnClic(contactoID uuid.UUID) string {
+	return fmt.Sprintf("%s/api/baja?c=%s&t=%s", s.urlPanel, contactoID, s.TokenDeBaja(contactoID))
+}
+
 func (s *Servicio) DarDeBaja(ctx context.Context, contactoID uuid.UUID, token string) (ResultadoBaja, error) {
 	esperado := s.TokenDeBaja(contactoID)
 	if !hmac.Equal([]byte(token), []byte(esperado)) {
