@@ -18,6 +18,7 @@ import type {
   ResumenImportacion,
   Revision,
   Sesion,
+  Sugerencia,
   Supresion,
   Usuario,
 } from "./tipos";
@@ -103,6 +104,14 @@ export const api = {
 
   obtenerCorrespondencia(id: string): Promise<Correspondencia> {
     return peticion<Correspondencia>(`/correspondencia/${id}`);
+  },
+
+  sugerirCuerpo(datos: {
+    documento: string;
+    asunto?: string;
+    variables?: string[];
+  }): Promise<Sugerencia> {
+    return peticion<Sugerencia>("/asistente/sugerir-cuerpo", { metodo: "POST", cuerpo: datos });
   },
 
   estadoAsistente(): Promise<EstadoAsistente> {
