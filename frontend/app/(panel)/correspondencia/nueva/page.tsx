@@ -33,6 +33,9 @@ export default function PaginaNuevaCorrespondencia() {
   const [listaId, setListaId] = useState(SIN_LISTA);
   const [variablesDetectadas, setVariablesDetectadas] = useState<string[]>([]);
   const [documentoSinVariables, setDocumentoSinVariables] = useState(false);
+  const [textoDocumento, setTextoDocumento] = useState("");
+  const [resumenSugerencia, setResumenSugerencia] = useState("");
+  const [cuerpoAnterior, setCuerpoAnterior] = useState<string | null>(null);
   const [instruccion, setInstruccion] = useState("");
   const referenciaWord = useRef<HTMLInputElement>(null);
 
@@ -70,6 +73,9 @@ export default function PaginaNuevaCorrespondencia() {
     mutationFn: (archivo: File) => api.leerDocumento(archivo),
     onSuccess: (contenido) => {
       setCuerpo(contenido.cuerpo);
+      setTextoDocumento(contenido.cuerpo);
+      setResumenSugerencia("");
+      setCuerpoAnterior(null);
       setVariablesDetectadas(contenido.variables);
       setDocumentoSinVariables(contenido.variables.length === 0);
       toast.success("Documento leído", {
@@ -81,6 +87,31 @@ export default function PaginaNuevaCorrespondencia() {
     },
     onError: (fallo: unknown) => {
       toast.error(fallo instanceof ErrorPeticion ? fallo.message : "No se pudo leer el documento");
+    },
+  });
+
+  const fuenteAnalisis = textoDocumento.trim() || cuerpo.trim();
+
+  const sugerencia = useMutation({
+    mutationFn: () =>
+      api.sugerirCuerpo({
+        documento: fuenteAnalisis,
+        asunto,
+        variables: variablesDisponibles,
+      }),
+    onSuccess: (resultado) => {
+      setCuerpoAnterior(cuerpo);
+      setCuerpo(resultado.cuerpo);
+      if (!asunto.trim() && resultado.asunto) {
+        setAsunto(resultado.asunto);
+      }
+      setResumenSugerencia(resultado.resumen);
+      toast.success("Cuerpo sugerido", {
+        description: "Revíselo antes de guardar. Puede deshacer el cambio.",
+      });
+    },
+    onError: (fallo: unknown) => {
+      toast.error(fallo instanceof ErrorPeticion ? fallo.message : "No se pudo analizar el documento");
     },
   });
 
@@ -299,7 +330,57 @@ export default function PaginaNuevaCorrespondencia() {
             </div>
 
             <div className="space-y-1.5">
-              <Label htmlFor="cuerpo">Cuerpo del mensaje</Label>
+              <div className="flex flex-wrap items-end justify-between gap-2">
+                <Label htmlFor="cuerpo">Cuerpo del mensaje</Label>
+                {asistente.data?.disponible && (
+                  <div className="flex gap-2">
+                    {cuerpoAnterior !== null && (
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => {
+                          setCuerpo(cuerpoAnterior);
+                          setCuerpoAnterior(null);
+                          setResumenSugerencia("");
+                        }}
+                      >
+                        Deshacer
+                      </Button>
+                    )}
+                    <Button
+                      type="button"
+                      size="sm"
+                      onClick={() => sugerencia.mutate()}
+                      disabled={sugerencia.isPending || fuenteAnalisis.length < 10}
+                      className="text-white"
+                    >
+                      {sugerencia.isPending ? (
+                        <Loader2 className="mr-2 h-4 w-4 animate-spin" aria-hidden="true" />
+                      ) : (
+                        <Sparkles className="mr-2 h-4 w-4" aria-hidden="true" />
+                      )}
+                      {sugerencia.isPending ? "Analizando documento" : "Sugerir con IA"}
+                    </Button>
+                  </div>
+                )}
+              </div>
+
+              {resumenSugerencia && (
+                <p className="rounded-lg border border-emerald-200 bg-emerald-50 px-3 py-2 text-xs text-emerald-900">
+                  <span className="font-medium">Lo que entendió del documento:</span>{" "}
+                  {resumenSugerencia} Recuerde subir el Word como carta personalizada en el
+                  siguiente paso para que viaje adjunto.
+                </p>
+              )}
+
+              {asistente.data?.disponible && fuenteAnalisis.length < 10 && (
+                <p className="text-xs text-muted-foreground">
+                  Suba un documento de Word o escriba la carta para que la IA sugiera un cuerpo
+                  profesional.
+                </p>
+              )}
+
               <Textarea
                 id="cuerpo"
                 rows={14}
