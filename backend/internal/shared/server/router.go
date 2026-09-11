@@ -22,6 +22,7 @@ import (
 	"github.com/Jose27luis/Correspondencia-CNI/backend/internal/shared/httpx"
 	"github.com/Jose27luis/Correspondencia-CNI/backend/internal/shared/mailer"
 	"github.com/Jose27luis/Correspondencia-CNI/backend/internal/shared/middleware"
+	"github.com/Jose27luis/Correspondencia-CNI/backend/internal/shared/pdf"
 	"github.com/Jose27luis/Correspondencia-CNI/backend/internal/shared/storage"
 	"github.com/Jose27luis/Correspondencia-CNI/backend/internal/suppression"
 	"github.com/Jose27luis/Correspondencia-CNI/backend/internal/users"
@@ -74,7 +75,14 @@ func NuevoRouter(ctx context.Context, pool *pgxpool.Pool, cfg config.Config, cli
 	handlerUsuarios := users.NuevoHandler(servicioUsuarios, middleware.NuevoLimitadorIntentos())
 	handlerContactos := contacts.NuevoHandler(contacts.NuevoServicio(contacts.NuevoRepositorio(pool)))
 	handlerListas := lists.NuevoHandler(lists.NuevoServicio(lists.NuevoRepositorio(pool)))
-	handlerCorrespondencia := correspondence.NuevoHandler(correspondence.NuevoServicio(repositorioCorrespondencia, almacen, proveedor))
+	convertidor := pdf.NuevoConvertidor(cfg.SofficeRuta)
+	if !convertidor.Disponible() {
+		slog.Warn("la vista previa en PDF queda deshabilitada", "motivo", "no se encontró LibreOffice", "ruta", cfg.SofficeRuta)
+	}
+	handlerCorrespondencia := correspondence.NuevoHandler(
+		correspondence.NuevoServicio(repositorioCorrespondencia, almacen, proveedor),
+		convertidor,
+	)
 	handlerEnvios := dispatches.NuevoHandler(dispatches.NuevoServicio(repositorioEnvios, repositorioCorrespondencia, cliente))
 
 	r := chi.NewRouter()
