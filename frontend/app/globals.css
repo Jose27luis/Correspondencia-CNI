@@ -43,3 +43,23 @@
     font-family: var(--font-geist-sans), system-ui, sans-serif;
   }
 }
+
+@layer components {
+  .vista-word-wrapper {
+    padding: 1.5rem;
+    background: transparent;
+  }
+
+  .vista-word-wrapper > section.vista-word {
+    margin: 0 auto 1.5rem;
+    box-shadow: 0 1px 3px rgba(16, 24, 40, 0.12);
+    overflow: visible;
+  }
+
+  .vista-word header,
+  .vista-word footer,
+  .vista-word header *,
+  .vista-word footer * {
+    overflow: visible;
+  }
+}
