@@ -1,4 +1,4 @@
-import { descargar, peticion } from "./api-client";
+import { descargar, obtenerArchivo, peticion } from "./api-client";
 import type {
   Adjunto,
   Borrador,
@@ -189,6 +189,12 @@ export const api = {
     return peticion<Correspondencia>(`/correspondencia/${id}/plantilla`, {
       metodo: "POST",
       formulario,
+    });
+  },
+
+  vistaPreviaPlantilla(id: string, contactoId?: string): Promise<Blob> {
+    return obtenerArchivo(`/correspondencia/${id}/plantilla/vista-previa`, {
+      contacto: contactoId,
     });
   },
 
