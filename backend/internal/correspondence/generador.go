@@ -58,8 +58,12 @@ func copiarEntrada(escritor *zip.Writer, entrada *zip.File, contacto contacts.Co
 		return ErrWordInvalido
 	}
 
+	if entrada.Name == configuracionWord {
+		contenido = quitarCombinacionCorrespondencia(contenido)
+	}
+
 	if debePersonalizarse(entrada.Name) {
-		contenido = reemplazarEnXML(contenido, contacto)
+		contenido = reemplazarEnXML(aplanarCamposCombinacion(contenido), contacto)
 	}
 
 	destino, err := escritor.Create(entrada.Name)
@@ -95,20 +99,22 @@ func reemplazarEnXML(contenido []byte, contacto contacts.Contacto) []byte {
 
 	for _, bloque := range parrafos {
 		original := unirFragmentos(bloque.fragmento)
-		if !strings.Contains(original, "{") {
+		if !strings.ContainsAny(original, "{«<") {
 			continue
 		}
 
-		resultado := Renderizar(original, contacto)
-		if resultado.Texto == original {
+		nuevos, cambio := redistribuir(original, bloque.fragmento, contacto)
+		if !cambio {
 			continue
 		}
 
 		salida.Write(contenido[ultimo:bloque.fragmento[0].inicio])
-		xml.EscapeText(&salida, []byte(resultado.Texto))
 
-		for posicion := 1; posicion < len(bloque.fragmento); posicion++ {
-			salida.Write(contenido[bloque.fragmento[posicion-1].fin:bloque.fragmento[posicion].inicio])
+		for posicion, fragmento := range bloque.fragmento {
+			if posicion > 0 {
+				salida.Write(contenido[bloque.fragmento[posicion-1].fin:fragmento.inicio])
+			}
+			xml.EscapeText(&salida, []byte(nuevos[posicion]))
 		}
 
 		ultimo = bloque.fragmento[len(bloque.fragmento)-1].fin
@@ -117,6 +123,65 @@ func reemplazarEnXML(contenido []byte, contacto contacts.Contacto) []byte {
 	salida.Write(contenido[ultimo:])
 
 	return salida.Bytes()
+}
+
+func redistribuir(original string, fragmentos []posicionTexto, contacto contacts.Contacto) ([]string, bool) {
+	coincidencias := patronVariable.FindAllStringIndex(original, -1)
+	if len(coincidencias) == 0 {
+		return nil, false
+	}
+
+	limites := make([]int, len(fragmentos)+1)
+	for posicion, fragmento := range fragmentos {
+		limites[posicion+1] = limites[posicion] + len(fragmento.texto)
+	}
+
+	nuevos := make([]strings.Builder, len(fragmentos))
+
+	copiar := func(desde int, hasta int) {
+		for posicion := range fragmentos {
+			inicio := max(desde, limites[posicion])
+			fin := min(hasta, limites[posicion+1])
+			if inicio < fin {
+				nuevos[posicion].WriteString(original[inicio:fin])
+			}
+		}
+	}
+
+	fragmentoDe := func(indice int) int {
+		for posicion := range fragmentos {
+			if indice < limites[posicion+1] {
+				return posicion
+			}
+		}
+		return len(fragmentos) - 1
+	}
+
+	cambio := false
+	cursor := 0
+
+	for _, coincidencia := range coincidencias {
+		inicio, fin := coincidencia[0], coincidencia[1]
+		copiar(cursor, inicio)
+
+		variable := original[inicio:fin]
+		reemplazo := Renderizar(variable, contacto).Texto
+		if reemplazo != variable {
+			cambio = true
+		}
+
+		nuevos[fragmentoDe(inicio)].WriteString(reemplazo)
+		cursor = fin
+	}
+
+	copiar(cursor, len(original))
+
+	resultado := make([]string, len(fragmentos))
+	for posicion := range nuevos {
+		resultado[posicion] = nuevos[posicion].String()
+	}
+
+	return resultado, cambio
 }
 
 func unirFragmentos(fragmentos []posicionTexto) string {
