@@ -38,6 +38,8 @@ export default function PaginaNuevaCorrespondencia() {
   const [cuerpoAnterior, setCuerpoAnterior] = useState<string | null>(null);
   const [instruccion, setInstruccion] = useState("");
   const referenciaWord = useRef<HTMLInputElement>(null);
+  const referenciaWordIA = useRef<HTMLInputElement>(null);
+  const [archivoWord, setArchivoWord] = useState<File | null>(null);
 
   const listas = useQuery({ queryKey: ["listas"], queryFn: () => api.listarListas() });
 
@@ -71,9 +73,10 @@ export default function PaginaNuevaCorrespondencia() {
 
   const lectura = useMutation({
     mutationFn: (archivo: File) => api.leerDocumento(archivo),
-    onSuccess: (contenido) => {
+    onSuccess: (contenido, archivo) => {
       setCuerpo(contenido.cuerpo);
       setTextoDocumento(contenido.cuerpo);
+      setArchivoWord(archivo);
       setResumenSugerencia("");
       setCuerpoAnterior(null);
       setVariablesDetectadas(contenido.variables);
@@ -87,6 +90,36 @@ export default function PaginaNuevaCorrespondencia() {
     },
     onError: (fallo: unknown) => {
       toast.error(fallo instanceof ErrorPeticion ? fallo.message : "No se pudo leer el documento");
+    },
+  });
+
+  const lecturaConIA = useMutation({
+    mutationFn: async (archivo: File) => {
+      const contenido = await api.leerDocumento(archivo);
+      const resultado = await api.sugerirCuerpo({
+        documento: contenido.cuerpo,
+        asunto,
+        variables: variablesDisponibles,
+      });
+      return { contenido, resultado };
+    },
+    onSuccess: ({ contenido, resultado }, archivo) => {
+      setTextoDocumento(contenido.cuerpo);
+      setVariablesDetectadas(contenido.variables);
+      setDocumentoSinVariables(contenido.variables.length === 0);
+      setArchivoWord(archivo);
+      setCuerpoAnterior(cuerpo);
+      setCuerpo(resultado.cuerpo);
+      if (!asunto.trim() && resultado.asunto) {
+        setAsunto(resultado.asunto);
+      }
+      setResumenSugerencia(resultado.resumen);
+      toast.success("Documento analizado", {
+        description: "Revise el cuerpo sugerido antes de guardar.",
+      });
+    },
+    onError: (fallo: unknown) => {
+      toast.error(fallo instanceof ErrorPeticion ? fallo.message : "No se pudo analizar el documento");
     },
   });
 
@@ -122,8 +155,24 @@ export default function PaginaNuevaCorrespondencia() {
         cuerpo,
         lista_id: listaId === SIN_LISTA ? null : listaId,
       }),
-    onSuccess: (pieza) => {
-      toast.success("Borrador guardado");
+    onSuccess: async (pieza) => {
+      if (archivoWord) {
+        try {
+          await api.subirPlantilla(pieza.id, archivoWord);
+          toast.success("Borrador guardado", {
+            description: `${archivoWord.name} se adjuntará personalizado para cada empresa.`,
+          });
+        } catch (fallo: unknown) {
+          toast.warning("Borrador guardado, pero no se pudo adjuntar el Word", {
+            description:
+              fallo instanceof ErrorPeticion
+                ? fallo.message
+                : "Súbalo en Carta en Word personalizada.",
+          });
+        }
+      } else {
+        toast.success("Borrador guardado");
+      }
       router.push(`/correspondencia/${pieza.id}`);
     },
     onError: (fallo: unknown) => {
@@ -369,8 +418,10 @@ export default function PaginaNuevaCorrespondencia() {
               {resumenSugerencia && (
                 <p className="rounded-lg border border-emerald-200 bg-emerald-50 px-3 py-2 text-xs text-emerald-900">
                   <span className="font-medium">Lo que entendió del documento:</span>{" "}
-                  {resumenSugerencia} Recuerde subir el Word como carta personalizada en el
-                  siguiente paso para que viaje adjunto.
+                  {resumenSugerencia}{" "}
+                  {archivoWord
+                    ? "El Word se adjuntará personalizado para cada empresa al guardar."
+                    : "Recuerde subir el Word como carta personalizada en el siguiente paso."}
                 </p>
               )}
 
@@ -403,6 +454,57 @@ export default function PaginaNuevaCorrespondencia() {
                   </Button>
                 ))}
               </div>
+
+              {asistente.data?.disponible && (
+                <div className="mt-3 rounded-lg border border-dashed border-emerald-300 bg-emerald-50/40 p-4">
+                  <p className="text-sm font-medium">Analizar una carta en Word con IA</p>
+                  <p className="mt-1 text-xs text-muted-foreground">
+                    Suba el .docx: la IA lo lee y redacta arriba un cuerpo profesional para el correo.
+                    El Word se adjuntará personalizado para cada empresa al guardar.
+                  </p>
+                  <input
+                    ref={referenciaWordIA}
+                    type="file"
+                    accept=".docx"
+                    className="hidden"
+                    onChange={(evento) => {
+                      const archivo = evento.target.files?.[0];
+                      if (archivo) {
+                        lecturaConIA.mutate(archivo);
+                      }
+                      evento.target.value = "";
+                    }}
+                  />
+                  <div className="mt-3 flex flex-wrap items-center gap-3">
+                    <Button
+                      type="button"
+                      size="sm"
+                      onClick={() => referenciaWordIA.current?.click()}
+                      disabled={lecturaConIA.isPending}
+                      className="text-white"
+                    >
+                      {lecturaConIA.isPending ? (
+                        <Loader2 className="mr-2 h-4 w-4 animate-spin" aria-hidden="true" />
+                      ) : (
+                        <FileUp className="mr-2 h-4 w-4" aria-hidden="true" />
+                      )}
+                      {lecturaConIA.isPending ? "Analizando documento" : "Subir Word y sugerir"}
+                    </Button>
+                    {archivoWord && (
+                      <span className="flex items-center gap-2 text-xs text-emerald-800">
+                        {archivoWord.name}
+                        <button
+                          type="button"
+                          onClick={() => setArchivoWord(null)}
+                          className="text-muted-foreground underline hover:text-destructive"
+                        >
+                          no adjuntar
+                        </button>
+                      </span>
+                    )}
+                  </div>
+                </div>
+              )}
             </div>
 
             <div className="flex gap-2 pt-2">
