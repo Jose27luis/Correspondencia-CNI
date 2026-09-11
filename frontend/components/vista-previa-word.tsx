@@ -72,8 +72,10 @@ export function VistaPreviaWord({
           className: "vista-word",
           inWrapper: true,
           ignoreWidth: false,
-          ignoreHeight: false,
+          ignoreHeight: true,
           breakPages: true,
+          ignoreLastRenderedPageBreak: false,
+          experimental: true,
           renderHeaders: true,
           renderFooters: true,
         });
