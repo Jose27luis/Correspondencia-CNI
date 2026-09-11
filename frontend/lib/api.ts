@@ -192,9 +192,10 @@ export const api = {
     });
   },
 
-  vistaPreviaPlantilla(id: string, contactoId?: string): Promise<Blob> {
+  vistaPreviaPlantilla(id: string, contactoId?: string, formato?: "pdf"): Promise<Blob> {
     return obtenerArchivo(`/correspondencia/${id}/plantilla/vista-previa`, {
       contacto: contactoId,
+      formato,
     });
   },
 
