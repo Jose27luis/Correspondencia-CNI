@@ -126,6 +126,14 @@ func TestRenderizarAplicaAliasDeCamposDeWord(t *testing.T) {
 	}
 }
 
+func TestRenderizarAceptaDoblesSignosDeMenorYMayor(t *testing.T) {
+	resultado := Renderizar("Señores:\n<<NOMBRES>>\nde <<PAIS>>", contactoDePrueba())
+
+	if resultado.Texto != "Señores:\nAna Quispe\nde Perú" {
+		t.Fatalf("no se reemplazaron las variables con << >>: %q", resultado.Texto)
+	}
+}
+
 func TestRenderizarMezclaLlavesYComillasAngulares(t *testing.T) {
 	resultado := Renderizar("«NOMBRES» de {empresa}", contactoDePrueba())
 
