@@ -56,6 +56,9 @@ type ResumenImportacion struct {
 func (e *EntradaContacto) Normalizar() {
 	e.Nombre = strings.TrimSpace(e.Nombre)
 	e.Empresa = strings.TrimSpace(e.Empresa)
+	if e.Nombre == "" {
+		e.Nombre = e.Empresa
+	}
 	e.Correo = strings.ToLower(strings.TrimSpace(e.Correo))
 
 	if e.Pais != nil {
