@@ -14,10 +14,11 @@ type Adjunto struct {
 }
 
 type Mensaje struct {
-	Para     string
-	Asunto   string
-	Cuerpo   string
-	Adjuntos []Adjunto
+	Para      string
+	Asunto    string
+	Cuerpo    string
+	Adjuntos  []Adjunto
+	Cabeceras map[string]string
 }
 
 type Resultado struct {
