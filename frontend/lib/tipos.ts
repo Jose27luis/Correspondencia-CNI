@@ -36,6 +36,14 @@ export interface Contacto {
   actualizado_en: string;
 }
 
+export interface EntradaContacto {
+  nombre: string;
+  empresa: string;
+  correo: string;
+  pais: string | null;
+  campos_extra: Record<string, string>;
+}
+
 export interface Lista {
   id: string;
   nombre: string;
