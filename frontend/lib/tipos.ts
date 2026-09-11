@@ -102,6 +102,12 @@ export interface Borrador {
   cuerpo: string;
 }
 
+export interface Sugerencia {
+  asunto: string;
+  cuerpo: string;
+  resumen: string;
+}
+
 export interface Hallazgo {
   gravedad: "alta" | "media" | "baja";
   titulo: string;
