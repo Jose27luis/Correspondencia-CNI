@@ -55,6 +55,7 @@ func (p *ProveedorResend) Enviar(ctx context.Context, mensaje Mensaje) (Resultad
 		To:          []string{mensaje.Para},
 		Subject:     mensaje.Asunto,
 		Text:        mensaje.Cuerpo,
+		Headers:     mensaje.Cabeceras,
 		Attachments: adjuntos,
 	}
 
