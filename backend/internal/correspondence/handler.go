@@ -2,6 +2,7 @@ package correspondence
 
 import (
 	"errors"
+	"fmt"
 	"log/slog"
 	"net/http"
 	"strings"
@@ -35,6 +36,7 @@ func (h *Handler) Registrar(r chi.Router) {
 		rc.Post("/leer-documento", h.leerDocumento)
 		rc.Get("/{id}/previsualizacion", h.previsualizar)
 		rc.Post("/{id}/prueba", h.enviarPrueba)
+		rc.Get("/{id}/plantilla/vista-previa", h.vistaPreviaPlantilla)
 		rc.Post("/{id}/plantilla", h.subirPlantilla)
 		rc.Delete("/{id}/plantilla", h.quitarPlantilla)
 		rc.Post("/{id}/adjuntos", h.agregarAdjunto)
@@ -189,6 +191,41 @@ func (h *Handler) enviarPrueba(w http.ResponseWriter, r *http.Request) {
 	httpx.JSON(w, http.StatusOK, resultado)
 }
 
+func (h *Handler) vistaPreviaPlantilla(w http.ResponseWriter, r *http.Request) {
+	id, err := httpx.LeerID(r, "id")
+	if err != nil {
+		httpx.Error(w, http.StatusBadRequest, "identificador inválido")
+		return
+	}
+
+	var contactoID *uuid.UUID
+	if valor := r.URL.Query().Get("contacto"); valor != "" {
+		interpretado, err := uuid.Parse(valor)
+		if err != nil {
+			httpx.Error(w, http.StatusBadRequest, "identificador de contacto inválido")
+			return
+		}
+		contactoID = &interpretado
+	}
+
+	vista, err := h.servicio.GenerarVistaPrevia(r.Context(), id, contactoID)
+	if err != nil {
+		responderError(w, err)
+		return
+	}
+
+	w.Header().Set(
+		"Content-Type",
+		"application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+	)
+	w.Header().Set("Content-Disposition", fmt.Sprintf("inline; filename=%q", vista.NombreArchivo))
+	w.Header().Set("Cache-Control", "no-store")
+
+	if _, err := w.Write(vista.Documento); err != nil {
+		slog.Error("no se pudo enviar la vista previa", "error", err)
+	}
+}
+
 func (h *Handler) subirPlantilla(w http.ResponseWriter, r *http.Request) {
 	id, err := httpx.LeerID(r, "id")
 	if err != nil {
@@ -308,6 +345,8 @@ func responderError(w http.ResponseWriter, err error) {
 		httpx.Error(w, http.StatusUnsupportedMediaType, "solo se aceptan archivos PDF, Word, Excel o imágenes")
 	case errors.Is(err, storage.ErrArchivoVacio):
 		httpx.Error(w, http.StatusUnprocessableEntity, "el archivo está vacío")
+	case errors.Is(err, ErrSinPlantilla):
+		httpx.Error(w, http.StatusUnprocessableEntity, "esta carta no tiene una carta en Word personalizada")
 	case errors.Is(err, ErrWordInvalido), errors.Is(err, ErrWordVacio):
 		httpx.Error(w, http.StatusUnprocessableEntity, err.Error())
 	case errors.Is(err, ErrLimiteAdjuntos):
