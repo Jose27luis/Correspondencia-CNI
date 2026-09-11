@@ -51,6 +51,7 @@ func (h *Handler) Registrar(r chi.Router) {
 		ra.Post("/revisar", h.revisar)
 		ra.Post("/contactos/extraer", h.extraerContactos)
 		ra.Post("/contactos/buscar", h.interpretarBusqueda)
+		ra.Post("/sugerir-cuerpo", h.sugerirCuerpo)
 	})
 }
 
@@ -115,6 +116,32 @@ func (h *Handler) revisar(w http.ResponseWriter, r *http.Request) {
 	}
 
 	httpx.JSON(w, http.StatusOK, revision)
+}
+
+func (h *Handler) sugerirCuerpo(w http.ResponseWriter, r *http.Request) {
+	var peticion ai.EntradaSugerencia
+	if err := httpx.Decodificar(w, r, &peticion); err != nil {
+		httpx.Error(w, http.StatusBadRequest, "el cuerpo de la petición no es válido")
+		return
+	}
+
+	if len(strings.TrimSpace(peticion.Documento)) < longitudMinimaInstruccion {
+		httpx.Error(w, http.StatusUnprocessableEntity, "suba primero el documento de Word para analizarlo")
+		return
+	}
+
+	if len(peticion.Documento) > longitudMaximaCarta {
+		httpx.Error(w, http.StatusRequestEntityTooLarge, "el documento es demasiado largo para analizarlo")
+		return
+	}
+
+	sugerencia, err := h.asistente.SugerirCuerpo(r.Context(), peticion)
+	if err != nil {
+		responderError(w, err)
+		return
+	}
+
+	httpx.JSON(w, http.StatusOK, sugerencia)
 }
 
 type PeticionExtraccion struct {
