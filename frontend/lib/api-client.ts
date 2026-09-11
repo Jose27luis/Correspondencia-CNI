@@ -51,6 +51,40 @@ interface OpcionesPeticion {
   parametros?: Record<string, string | number | undefined>;
 }
 
+export async function obtenerArchivo(
+  ruta: string,
+  parametros: Record<string, string | undefined> = {},
+): Promise<Blob> {
+  const url = construirUrl(ruta);
+  for (const [clave, valor] of Object.entries(parametros)) {
+    if (valor) {
+      url.searchParams.set(clave, valor);
+    }
+  }
+
+  const cabeceras: Record<string, string> = {};
+  const token = leerToken();
+  if (token) {
+    cabeceras.Authorization = `Bearer ${token}`;
+  }
+
+  const respuesta = await fetch(url.toString(), { headers: cabeceras });
+
+  if (!respuesta.ok) {
+    const texto = await respuesta.text();
+    let mensaje = "No se pudo obtener el archivo";
+    try {
+      const error = JSON.parse(texto) as ErrorApi;
+      mensaje = error.error;
+    } catch {
+      mensaje = "No se pudo obtener el archivo";
+    }
+    throw new ErrorPeticion(respuesta.status, mensaje);
+  }
+
+  return respuesta.blob();
+}
+
 export async function descargar(ruta: string, nombreArchivo: string): Promise<void> {
   const cabeceras: Record<string, string> = {};
   const token = leerToken();
