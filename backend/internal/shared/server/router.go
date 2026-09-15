@@ -12,9 +12,12 @@ import (
 	"github.com/jackc/pgx/v5/pgxpool"
 
 	"github.com/Jose27luis/Correspondencia-CNI/backend/internal/assistant"
+	"github.com/Jose27luis/Correspondencia-CNI/backend/internal/businessround"
 	"github.com/Jose27luis/Correspondencia-CNI/backend/internal/contacts"
 	"github.com/Jose27luis/Correspondencia-CNI/backend/internal/correspondence"
+	"github.com/Jose27luis/Correspondencia-CNI/backend/internal/directory"
 	"github.com/Jose27luis/Correspondencia-CNI/backend/internal/dispatches"
+	"github.com/Jose27luis/Correspondencia-CNI/backend/internal/intake"
 	"github.com/Jose27luis/Correspondencia-CNI/backend/internal/lists"
 	"github.com/Jose27luis/Correspondencia-CNI/backend/internal/shared/ai"
 	"github.com/Jose27luis/Correspondencia-CNI/backend/internal/shared/auth"
@@ -83,6 +86,14 @@ func NuevoRouter(ctx context.Context, pool *pgxpool.Pool, cfg config.Config, cli
 		correspondence.NuevoServicio(repositorioCorrespondencia, almacen, proveedor),
 		convertidor,
 	)
+	incorporador := intake.NuevoIncorporador(pool)
+	limitadorPublico := middleware.NuevoLimitadorIntentos()
+	handlerDirectorio := directory.NuevoHandler(directory.NuevoServicio(pool, incorporador), almacen, limitadorPublico)
+	handlerRueda := businessround.NuevoHandler(
+		businessround.NuevoServicio(pool, incorporador, asistente, proveedor),
+		almacen,
+		limitadorPublico,
+	)
 	handlerEnvios := dispatches.NuevoHandler(dispatches.NuevoServicio(repositorioEnvios, repositorioCorrespondencia, cliente))
 
 	r := chi.NewRouter()
@@ -100,6 +111,8 @@ func NuevoRouter(ctx context.Context, pool *pgxpool.Pool, cfg config.Config, cli
 		handlerUsuarios.RegistrarPublicas(api)
 		registrarWebhooks(api, cfg, repositorioEnvios, repositorioExclusiones)
 		handlerExclusiones.RegistrarPublicas(api)
+		handlerDirectorio.RegistrarPublicas(api)
+		handlerRueda.RegistrarPublicas(api)
 
 		api.Group(func(protegidas chi.Router) {
 			protegidas.Use(middleware.RequiereAutenticacion(emisor))
@@ -110,6 +123,8 @@ func NuevoRouter(ctx context.Context, pool *pgxpool.Pool, cfg config.Config, cli
 			handlerEnvios.Registrar(protegidas)
 			handlerExclusiones.RegistrarProtegidas(protegidas)
 			handlerAsistente.Registrar(protegidas)
+			handlerDirectorio.RegistrarProtegidas(protegidas)
+			handlerRueda.RegistrarProtegidas(protegidas)
 		})
 	})
 
