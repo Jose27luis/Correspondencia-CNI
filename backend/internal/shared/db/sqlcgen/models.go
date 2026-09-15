@@ -50,6 +50,26 @@ type Correspondencia struct {
 	PlantillaNombre *string    `json:"plantilla_nombre"`
 }
 
+type DirectorioEmpresa struct {
+	ID            uuid.UUID  `json:"id"`
+	Nombre        string     `json:"nombre"`
+	Ruc           string     `json:"ruc"`
+	Correo        string     `json:"correo"`
+	Direccion     string     `json:"direccion"`
+	Ciudad        string     `json:"ciudad"`
+	Telefono      *string    `json:"telefono"`
+	Celular       *string    `json:"celular"`
+	Facebook      *string    `json:"facebook"`
+	PaginaWeb     *string    `json:"pagina_web"`
+	Descripcion   string     `json:"descripcion"`
+	LogoUrl       *string    `json:"logo_url"`
+	Estado        string     `json:"estado"`
+	MotivoRechazo *string    `json:"motivo_rechazo"`
+	ContactoID    *uuid.UUID `json:"contacto_id"`
+	CreadoEn      time.Time  `json:"creado_en"`
+	RevisadoEn    *time.Time `json:"revisado_en"`
+}
+
 type Envio struct {
 	ID                 uuid.UUID  `json:"id"`
 	CorrespondenciaID  uuid.UUID  `json:"correspondencia_id"`
@@ -75,6 +95,52 @@ type ListaContacto struct {
 	Nombre      string    `json:"nombre"`
 	Descripcion *string   `json:"descripcion"`
 	CreadoEn    time.Time `json:"creado_en"`
+}
+
+type RuedaCoincidencia struct {
+	ID           uuid.UUID  `json:"id"`
+	DemandaID    uuid.UUID  `json:"demanda_id"`
+	OfertaID     uuid.UUID  `json:"oferta_id"`
+	Puntaje      int32      `json:"puntaje"`
+	Motivo       string     `json:"motivo"`
+	Estado       string     `json:"estado"`
+	CreadoEn     time.Time  `json:"creado_en"`
+	NotificadaEn *time.Time `json:"notificada_en"`
+}
+
+type RuedaEmpresa struct {
+	ID               uuid.UUID  `json:"id"`
+	RazonSocial      string     `json:"razon_social"`
+	Ruc              string     `json:"ruc"`
+	PersonaEncargada string     `json:"persona_encargada"`
+	CargoEncargado   *string    `json:"cargo_encargado"`
+	Correo           string     `json:"correo"`
+	Direccion        *string    `json:"direccion"`
+	Ciudad           *string    `json:"ciudad"`
+	Region           *string    `json:"region"`
+	Pais             string     `json:"pais"`
+	CodigoPostal     *string    `json:"codigo_postal"`
+	Telefono         *string    `json:"telefono"`
+	Celular          *string    `json:"celular"`
+	PaginaWeb        *string    `json:"pagina_web"`
+	Estado           string     `json:"estado"`
+	MotivoRechazo    *string    `json:"motivo_rechazo"`
+	ContactoID       *uuid.UUID `json:"contacto_id"`
+	CreadoEn         time.Time  `json:"creado_en"`
+	RevisadoEn       *time.Time `json:"revisado_en"`
+}
+
+type RuedaPublicacion struct {
+	ID            uuid.UUID  `json:"id"`
+	EmpresaID     uuid.UUID  `json:"empresa_id"`
+	Tipo          string     `json:"tipo"`
+	Titulo        string     `json:"titulo"`
+	Descripcion   string     `json:"descripcion"`
+	ImagenUrl     *string    `json:"imagen_url"`
+	Estado        string     `json:"estado"`
+	MotivoRechazo *string    `json:"motivo_rechazo"`
+	CreadoEn      time.Time  `json:"creado_en"`
+	RevisadoEn    *time.Time `json:"revisado_en"`
 }
 
 type Supresion struct {
