@@ -14,6 +14,7 @@ sql:
         rename:
           correspondencium: "Correspondencia"
           contacto_listum: "ContactoLista"
+          rueda_coincidencium: "RuedaCoincidencia"
         overrides:
           - db_type: "uuid"
             go_type: "github.com/google/uuid.UUID"
